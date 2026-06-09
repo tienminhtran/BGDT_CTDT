@@ -13,8 +13,10 @@ COPY . .
 # Có thể override khi build nếu muốn gọi backend ở domain khác.
 ARG VITE_API_BASE_URL=/api
 ARG VITE_LMS_BASE_URL=https://lms.iuh.edu.vn
+ARG VITE_UPLOAD_API_KEY=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL \
-    VITE_LMS_BASE_URL=$VITE_LMS_BASE_URL
+    VITE_LMS_BASE_URL=$VITE_LMS_BASE_URL \
+    VITE_UPLOAD_API_KEY=$VITE_UPLOAD_API_KEY
 
 RUN npm run build
 

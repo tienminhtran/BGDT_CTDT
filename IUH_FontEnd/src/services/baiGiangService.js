@@ -1,5 +1,5 @@
 import http from '../api/http'
-import { ENDPOINTS } from '../constants'
+import { ENDPOINTS, UPLOAD_API_KEY } from '../constants'
 
 // Chi tiết đăng ký bài giảng (các chương) theo phiên bản môn học.
 export const getChiTiet = async (monHocVersionId) => {
@@ -30,7 +30,12 @@ export const uploadVideo = async (baiGiangId, file) => {
   const { data } = await http.post(
     ENDPOINTS.baiGiang.uploadVideo(baiGiangId),
     form,
-    { headers: { 'Content-Type': 'multipart/form-data' } }
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        'x-api-key': UPLOAD_API_KEY,
+      },
+    }
   )
   return data
 }

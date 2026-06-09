@@ -1,9 +1,3 @@
-# ============================================================
-#  Docker Compose CHUNG: MinIO + Backend + Frontend
-#  Triển khai cả hệ thống lên server bằng 1 lệnh:
-#      docker compose up -d --build
-#  Cấu hình qua file .env (xem .env.example) đặt cùng thư mục.
-# ============================================================
 
 services:
   # ---------- Object storage ----------
@@ -14,7 +8,7 @@ services:
     restart: unless-stopped
     ports:
       - "${MINIO_API_PORT:-9000}:9000"      # S3 API
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"  # Web Console
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"  # Web console
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
@@ -26,7 +20,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # Container phụ: tạo bucket sau khi MinIO sẵn sàng rồi thoát.
+  # Tạo bucket khi MinIO sẵn sàng rồi thoát
   createbuckets:
     image: minio/mc:latest
     container_name: iuh_minio_init
@@ -34,59 +28,23 @@ services:
       minio:
         condition: service_healthy
     entrypoint: >
-      /bin/sh -c "
-      mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin123};
-      mc mb --ignore-existing local/${MINIO_BUCKET:-baigiang};
-      echo 'Bucket ${MINIO_BUCKET:-baigiang} da san sang (private)';
-      exit 0;
-      "
+      /bin/sh -c "mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin123} && mc mb --ignore-existing local/${MINIO_BUCKET:-baigiang}"
 
   # ---------- Backend (Node.js + Express) ----------
   backend:
     build: ./IUH_BackEnd
-    image: iuh_backend
     container_name: iuh_backend
     restart: unless-stopped
     depends_on:
       minio:
         condition: service_healthy
-    environment:
-      PORT: 3000
+    env_file: .env                 # nạp toàn bộ biến từ .env
+    environment:                   # ghi đè các biến đặc thù container
       NODE_ENV: production
-
-      # SQL Server (DB chạy NGOÀI docker - điền IP/cổng thật trong .env)
-      DB_SERVER: ${DB_SERVER}
-      DB_PORT: ${DB_PORT:-1433}
-      DB_NAME: ${DB_NAME}
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_ENCRYPT: ${DB_ENCRYPT:-false}
-      DB_TRUST_SERVER_CERTIFICATE: ${DB_TRUST_SERVER_CERTIFICATE:-true}
-
-      # JWT
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-
-      # Moodle LMS
-      MOODLE_URL: ${MOODLE_URL:-https://lms.iuh.edu.vn}
-      MOODLE_SERVICE: ${MOODLE_SERVICE:-moodle_mobile_app}
-      MOODLE_TLS_INSECURE: ${MOODLE_TLS_INSECURE:-true}
-
-      # MinIO: backend gọi qua mạng nội bộ docker (service "minio")
-      MINIO_ENDPOINT: http://minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
-      MINIO_BUCKET: ${MINIO_BUCKET:-baigiang}
-      MINIO_USE_SSL: "false"
-
-      # Upload / HLS video
+      MINIO_ENDPOINT: http://minio:9000   # gọi MinIO qua mạng nội bộ
       FFMPEG_PATH: /usr/bin/ffmpeg
-      HLS_SEGMENT_TIME: ${HLS_SEGMENT_TIME:-6}
-      MAX_VIDEO_MB: ${MAX_VIDEO_MB:-2048}
-      HLS_TOKEN_TTL: ${HLS_TOKEN_TTL:-6h}
-    # Mở cổng ra host để debug trực tiếp (không bắt buộc - frontend đã proxy /api)
     ports:
-      - "${BACKEND_PORT:-3000}:3000"
+      - "${BACKEND_PORT:-3000}:3000"      # tuỳ chọn, để debug
 
   # ---------- Frontend (Vite/React + nginx) ----------
   frontend:
@@ -95,7 +53,7 @@ services:
       args:
         VITE_API_BASE_URL: /api
         VITE_LMS_BASE_URL: ${VITE_LMS_BASE_URL:-https://lms.iuh.edu.vn}
-    image: iuh_frontend
+        VITE_UPLOAD_API_KEY: ${UPLOAD_API_KEY}
     container_name: iuh_frontend
     restart: unless-stopped
     depends_on:

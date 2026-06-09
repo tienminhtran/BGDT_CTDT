@@ -1,5 +1,6 @@
 const express = require('express');
 const controller = require('../controllers/baiGiang.controller');
+const apiKey = require('../middlewares/apiKey');
 
 const router = express.Router();
 
@@ -19,7 +20,8 @@ router.get('/chi-tiet', controller.listChiTiet);
 router.post('/chi-tiet/:chiTietId/ensure', controller.ensureBaiGiang);
 
 // POST /api/baigiang/:id/upload-video
+// Header: x-api-key=<UPLOAD_API_KEY>  (bảo vệ endpoint upload)
 // form-data: video=<file>  -> upload lên MinIO theo [ma_tuquan]/[version]/[Id]/{stream,chunk}
-router.post('/:id/upload-video', controller.uploadMiddleware, controller.uploadVideo);
+router.post('/:id/upload-video', apiKey, controller.uploadMiddleware, controller.uploadVideo);
 
 module.exports = router;
