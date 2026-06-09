@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, PlayCircle, Loader2, Lock } from 'lucide-react'
+import { ArrowLeft, PlayCircle, Loader2, Lock, Star } from 'lucide-react'
 import Layout from '../components/Layout'
 import HlsPlayer from '../components/HlsPlayer'
 import { useAuth } from '../contexts/AuthContext'
@@ -8,6 +8,43 @@ import { baiGiangService, sinhVienHocPhanService } from '../services'
 import { ROUTES } from '../constants'
 
 const tieuDe = (v) => v?.tenBaiGiang || v?.noiDungChuong || 'Bài giảng'
+
+/* ---------- Đánh giá 5 sao cho bài giảng ---------- */
+function StarRating() {
+  const [rating, setRating] = useState(0)
+  const [hover, setHover] = useState(0)
+
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((n) => {
+          const filled = n <= (hover || rating)
+          return (
+            <button
+              key={n}
+              type="button"
+              aria-label={`Đánh giá ${n} sao`}
+              onClick={() => setRating(n)}
+              onMouseEnter={() => setHover(n)}
+              onMouseLeave={() => setHover(0)}
+              className="transition-transform hover:scale-110"
+            >
+              <Star
+                size={26}
+                className={
+                  filled ? 'fill-amber-400 text-amber-400' : 'fill-transparent text-slate-300'
+                }
+              />
+            </button>
+          )
+        })}
+      </div>
+      <span className="text-sm text-slate-500">
+        {rating ? `Bạn đã đánh giá ${rating}/5 sao` : 'Đánh giá'}
+      </span>
+    </div>
+  )
+}
 
 export default function CoursePlayerPage() {
   const { user, logout } = useAuth()
@@ -119,48 +156,56 @@ export default function CoursePlayerPage() {
 
   return (
     <Layout user={user} onLogout={logout}>
-      <main className="mx-auto w-full max-w-6xl px-4 py-6">
+      <main className="mx-auto w-full max-w-[1600px] px-4 py-6">
         {BackButton}
 
-        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-          {/* ===== Khung video (trái) ===== */}
-          <div>
-            <div className="aspect-video w-full overflow-hidden rounded-xl bg-black">
-              {playSrc ? (
-                <HlsPlayer key={active.baiGiangId} src={playSrc} className="h-full w-full" />
-              ) : (
-                <div className="flex h-full w-full flex-col items-center justify-center text-white/80">
-                  <PlayCircle size={64} className="opacity-90" />
-                  <p className="mt-3 text-sm">
-                    {videos.loading
-                      ? 'Đang tải video...'
-                      : active?.coHls
-                        ? 'Đang chuẩn bị trình phát...'
-                        : active
-                          ? 'Bài giảng chưa có bản phát (HLS)'
-                          : 'Chưa có video bài giảng'}
-                  </p>
-                </div>
-              )}
-            </div>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
+          {/* ===== Cột video (trái) ===== */}
+          <div className="min-w-0">
+            {/* Khung video 16:9 cố định, giới hạn chiều cao để không phình quá to */}
+            <div className="mx-auto w-full max-w-[1100px]">
+              <div className="aspect-video w-full overflow-hidden rounded-xl bg-black shadow-sm">
+                {playSrc ? (
+                  <HlsPlayer key={active.baiGiangId} src={playSrc} className="h-full w-full" />
+                ) : (
+                  <div className="flex h-full w-full flex-col items-center justify-center text-white/80">
+                    <PlayCircle size={64} className="opacity-90" />
+                    <p className="mt-3 text-sm">
+                      {videos.loading
+                        ? 'Đang tải video...'
+                        : active?.coHls
+                          ? 'Đang chuẩn bị trình phát...'
+                          : active
+                            ? 'Bài giảng chưa có bản phát (HLS)'
+                            : 'Chưa có video bài giảng'}
+                    </p>
+                  </div>
+                )}
+              </div>
 
-            <h1 className="mt-4 text-lg font-bold text-slate-800">
-              {active ? tieuDe(active) : 'Bài giảng'}
-            </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Môn {maMon}
-              {version ? ` · Phiên bản ${version}` : ''}
-            </p>
+              {/* Tên chương + đánh giá 5 sao chung một hàng */}
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <h1 className="text-xl font-bold leading-snug text-slate-800">
+                  {active ? tieuDe(active) : 'Bài giảng'}
+                </h1>
+                {/* Đánh giá 5 sao — reset mỗi khi đổi bài giảng */}
+                <StarRating key={active?.baiGiangId} />
+              </div>
+              <p className="mt-1 text-sm text-slate-500">
+                Môn {maMon}
+                {version ? ` · Phiên bản ${version}` : ''}
+              </p>
 
-            <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm leading-relaxed text-slate-600">
-              <h2 className="mb-2 font-semibold text-slate-800">Mô tả bài học</h2>
-              {active?.noiDungChuong || 'Sinh viên theo dõi video bên trên và chuyển bài bằng danh sách bên phải.'}
+              <div className="mt-4 rounded-xl border-slate-200 bg-gray-200 p-4 text-sm leading-relaxed text-slate-600">
+                <h2 className="mb-2 font-semibold text-slate-800">Mô tả bài học</h2>
+                {active?.noiDungChuong || 'Sinh viên theo dõi video bên trên và chuyển bài bằng danh sách bên phải.'}
+              </div>
             </div>
           </div>
 
-          {/* ===== Danh sách video (phải) ===== */}
-          <aside className="lg:max-h-[80vh] lg:overflow-y-auto">
-            <div className="rounded-xl border border-slate-200 bg-white">
+          {/* ===== Danh sách video (phải) — dính khi cuộn trên desktop ===== */}
+          <aside className="lg:sticky lg:top-20 lg:self-start">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
               <div className="border-b border-slate-100 px-4 py-3">
                 <h2 className="font-semibold text-slate-800">Danh sách bài giảng</h2>
                 <p className="text-xs text-slate-400">{list.length} bài giảng</p>
@@ -175,7 +220,7 @@ export default function CoursePlayerPage() {
               ) : !list.length ? (
                 <p className="px-4 py-6 text-sm text-slate-500">Chưa có bài giảng nào.</p>
               ) : (
-                <ul className="divide-y divide-slate-100">
+                <ul className="divide-y divide-slate-100 lg:max-h-[70vh] lg:overflow-y-auto">
                   {list.map((v, i) => {
                     const isActive = v.baiGiangId === active?.baiGiangId
                     return (
@@ -183,23 +228,30 @@ export default function CoursePlayerPage() {
                         <button
                           type="button"
                           onClick={() => setActiveId(v.baiGiangId)}
-                          className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-slate-50 ${
+                          className={`flex w-full items-center gap-3 px-3 py-2.5 text-left transition hover:bg-slate-50 ${
                             isActive ? 'bg-[#115EA8]/10' : ''
                           }`}
                         >
-                          <span className="mt-0.5 shrink-0">
-                            <PlayCircle
-                              size={18}
-                              className={isActive ? 'text-[#115EA8]' : 'text-slate-400'}
-                            />
+                          {/* Ô thumbnail mini 16:9 + số thứ tự (kiểu YouTube) */}
+                          <span
+                            className={`flex aspect-video w-24 shrink-0 items-center justify-center rounded-md text-sm font-semibold ${
+                              isActive
+                                ? 'bg-[#115EA8] text-white'
+                                : 'bg-slate-100 text-slate-500'
+                            }`}
+                          >
+                            {isActive ? <PlayCircle size={20} /> : i + 1}
                           </span>
                           <span className="min-w-0 flex-1">
                             <span
-                              className={`block text-sm font-medium ${
+                              className={`line-clamp-2 text-sm font-medium ${
                                 isActive ? 'text-[#0d4a82]' : 'text-slate-700'
                               }`}
                             >
-                              {i + 1}. {tieuDe(v)}
+                              {tieuDe(v)}
+                            </span>
+                            <span className="mt-0.5 block text-xs text-slate-400">
+                              Bài {i + 1}
                             </span>
                           </span>
                         </button>
