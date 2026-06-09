@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, PlayCircle, Loader2, Lock } from 'lucide-react'
-import Layout from './Layout'
-import HlsPlayer from './HlsPlayer'
-import http from '../api/http'
+import Layout from '../components/Layout'
+import HlsPlayer from '../components/HlsPlayer'
+import { useAuth } from '../contexts/AuthContext'
+import { baiGiangService, sinhVienHocPhanService } from '../services'
+import { ROUTES } from '../constants'
 
 const tieuDe = (v) => v?.tenBaiGiang || v?.noiDungChuong || 'Bài giảng'
 
-export default function CoursePlayer({ user, onLogout }) {
+export default function CoursePlayerPage() {
+  const { user, logout } = useAuth()
   const { maMon, version } = useParams()
   const navigate = useNavigate()
   const [activeId, setActiveId] = useState(null)
@@ -21,9 +24,9 @@ export default function CoursePlayer({ user, onLogout }) {
   useEffect(() => {
     let alive = true
     setAccess({ loading: true, allowed: false })
-    http
-      .get(`/sinhvien-hocphan/kiem-tra/${encodeURIComponent(maMon)}`)
-      .then((res) => alive && setAccess({ loading: false, allowed: !!res.data.allowed }))
+    sinhVienHocPhanService
+      .kiemTraQuyen(maMon)
+      .then((allowed) => alive && setAccess({ loading: false, allowed }))
       .catch(() => alive && setAccess({ loading: false, allowed: false }))
     return () => {
       alive = false
@@ -34,11 +37,10 @@ export default function CoursePlayer({ user, onLogout }) {
   useEffect(() => {
     let alive = true
     setVideos({ loading: true, items: [], error: '' })
-    http
-      .get('/baigiang/danh-sach', { params: { maMon, version } })
-      .then((res) => {
+    baiGiangService
+      .getDanhSachVideo(maMon, version)
+      .then((items) => {
         if (!alive) return
-        const items = res.data.videos || []
         setVideos({ loading: false, items, error: '' })
         setActiveId(items[0]?.baiGiangId ?? null)
       })
@@ -64,9 +66,9 @@ export default function CoursePlayer({ user, onLogout }) {
     let alive = true
     setPlaySrc(null)
     if (!active?.baiGiangId || !active?.coHls) return
-    http
-      .get(`/baigiang/${active.baiGiangId}/playback-token`)
-      .then((res) => alive && setPlaySrc(res.data.url))
+    baiGiangService
+      .getPlaybackToken(active.baiGiangId)
+      .then((url) => alive && setPlaySrc(url))
       .catch(() => alive && setPlaySrc(null))
     return () => {
       alive = false
@@ -76,7 +78,7 @@ export default function CoursePlayer({ user, onLogout }) {
   const BackButton = (
     <button
       type="button"
-      onClick={() => navigate('/trang-chu')}
+      onClick={() => navigate(ROUTES.dashboard)}
       className="mb-4 inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-green-700"
     >
       <ArrowLeft size={16} />
@@ -86,7 +88,7 @@ export default function CoursePlayer({ user, onLogout }) {
 
   if (access.loading) {
     return (
-      <Layout user={user} onLogout={onLogout}>
+      <Layout user={user} onLogout={logout}>
         <main className="mx-auto flex w-full max-w-6xl items-center justify-center gap-2 px-4 py-20 text-slate-500">
           <Loader2 className="animate-spin" size={18} />
           Đang kiểm tra quyền truy cập...
@@ -97,7 +99,7 @@ export default function CoursePlayer({ user, onLogout }) {
 
   if (!access.allowed) {
     return (
-      <Layout user={user} onLogout={onLogout}>
+      <Layout user={user} onLogout={logout}>
         <main className="mx-auto w-full max-w-full px-4 py-6">
           {BackButton}
           <div className="mx-auto mt-10 max-w-md rounded-xl border border-amber-200 bg-amber-50 p-6 text-center">
@@ -116,7 +118,7 @@ export default function CoursePlayer({ user, onLogout }) {
   }
 
   return (
-    <Layout user={user} onLogout={onLogout}>
+    <Layout user={user} onLogout={logout}>
       <main className="mx-auto w-full max-w-6xl px-4 py-6">
         {BackButton}
 

@@ -8,11 +8,14 @@ import {
   PlayCircle,
   AlertTriangle,
 } from 'lucide-react'
-import Layout from './Layout'
-import HlsPlayer from './HlsPlayer'
-import http from '../api/http'
+import Layout from '../components/Layout'
+import HlsPlayer from '../components/HlsPlayer'
+import { useAuth } from '../contexts/AuthContext'
+import { monHocService, baiGiangService } from '../services'
 
-export default function QuanLyBaiGiang({ user, onLogout }) {
+export default function QuanLyBaiGiangPage() {
+  const { user, logout } = useAuth()
+
   const [monHoc, setMonHoc] = useState([])
   const [loadingMon, setLoadingMon] = useState(true)
   const [error, setError] = useState('')
@@ -25,9 +28,9 @@ export default function QuanLyBaiGiang({ user, onLogout }) {
 
   // 1) Lấy danh sách môn học + phiên bản
   useEffect(() => {
-    http
-      .get('/monhoc')
-      .then((res) => setMonHoc(res.data.monHoc || []))
+    monHocService
+      .getMonHoc()
+      .then(setMonHoc)
       .catch((err) =>
         setError(err?.response?.data?.message || 'Không tải được danh sách môn học')
       )
@@ -47,9 +50,9 @@ export default function QuanLyBaiGiang({ user, onLogout }) {
       return
     }
     setLoadingChiTiet(true)
-    http
-      .get('/baigiang/chi-tiet', { params: { monHocVersionId: vid } })
-      .then((res) => setChiTiet(res.data.chiTiet || []))
+    baiGiangService
+      .getChiTiet(vid)
+      .then(setChiTiet)
       .catch((err) =>
         setError(err?.response?.data?.message || 'Không tải được chi tiết bài giảng')
       )
@@ -76,7 +79,7 @@ export default function QuanLyBaiGiang({ user, onLogout }) {
     )
 
   return (
-    <Layout user={user} onLogout={onLogout}>
+    <Layout user={user} onLogout={logout}>
       <main className="mx-auto w-full max-w-5xl px-4 py-6">
         <h1 className="flex items-center gap-2 text-xl font-semibold text-green-700">
           <BookOpen size={22} /> Quản lý bài giảng
@@ -180,8 +183,7 @@ function ChuongItem({ row, onUploaded }) {
     try {
       let src = previewSrc
       if (!src && row.baiGiangId) {
-        const res = await http.get(`/baigiang/${row.baiGiangId}/playback-token`)
-        src = res.data.url
+        src = await baiGiangService.getPlaybackToken(row.baiGiangId)
         setPreviewSrc(src)
       }
       if (src) setPreview(true)
@@ -199,23 +201,18 @@ function ChuongItem({ row, onUploaded }) {
       // Đảm bảo có baiGiangId (tạo nếu chương chưa có bài giảng)
       let baiGiangId = row.baiGiangId
       if (!baiGiangId) {
-        const res = await http.post(`/baigiang/chi-tiet/${row.chiTietId}/ensure`)
-        baiGiangId = res.data.baiGiangId
+        baiGiangId = await baiGiangService.ensureBaiGiang(row.chiTietId)
       }
 
-      const form = new FormData()
-      form.append('video', file)
-      const res = await http.post(`/baigiang/${baiGiangId}/upload-video`, form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
+      const data = await baiGiangService.uploadVideo(baiGiangId, file)
 
       onUploaded({
         baiGiangId,
-        coVideo: res.data.coVideo ?? true,
-        coHls: res.data.coHls ?? false,
+        coVideo: data.coVideo ?? true,
+        coHls: data.coHls ?? false,
       })
       setPreviewSrc(null) // buộc lấy lại token/playlist lần xem trước kế tiếp
-      setMsg(res.data.message || 'Upload thành công')
+      setMsg(data.message || 'Upload thành công')
       setFile(null)
     } catch (e) {
       setErr(e?.response?.data?.message || 'Upload thất bại')

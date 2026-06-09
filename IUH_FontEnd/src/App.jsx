@@ -1,13 +1,17 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
-import { useMoodleAuth } from './hooks/useMoodleAuth'
-import Home from './components/Home'
-import Dashboard from './components/Dashboard'
-import CoursePlayer from './components/CoursePlayer'
-import QuanLyBaiGiang from './components/QuanLyBaiGiang'
+import { useAuth } from './contexts/AuthContext'
+import ProtectedRoute from './components/ProtectedRoute'
+import { ROUTES } from './constants'
+import {
+  HomePage,
+  DashboardPage,
+  QuanLyBaiGiangPage,
+  CoursePlayerPage,
+} from './pages'
 
 export default function App() {
-  const { user, checking, login, logout } = useMoodleAuth()
+  const { user, checking } = useAuth()
 
   if (checking) {
     return (
@@ -22,63 +26,53 @@ export default function App() {
     <Routes>
       {/* Trang đăng nhập */}
       <Route
-        path="/"
-        element={
-          user ? <Navigate to="/trang-chu" replace /> : <Home login={login} />
-        }
+        path={ROUTES.home}
+        element={user ? <Navigate to={ROUTES.dashboard} replace /> : <HomePage />}
       />
 
-      {/* Trang chính sau đăng nhập (URL riêng) */}
+      {/* Trang chính sau đăng nhập */}
       <Route
-        path="/trang-chu"
+        path={ROUTES.dashboard}
         element={
-          user ? (
-            <Dashboard user={user} onLogout={logout} />
-          ) : (
-            <Navigate to="/" replace />
-          )
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
         }
       />
 
       {/* Trang quản lý bài giảng (chọn môn/phiên bản, upload video) */}
       <Route
-        path="/quan-ly-bai-giang"
+        path={ROUTES.quanLyBaiGiang}
         element={
-          user ? (
-            <QuanLyBaiGiang user={user} onLogout={logout} />
-          ) : (
-            <Navigate to="/" replace />
-          )
+          <ProtectedRoute>
+            <QuanLyBaiGiangPage />
+          </ProtectedRoute>
         }
       />
 
-      {/* Trang xem bài giảng của một môn: /bai-giang-dien-tu/<mã môn>/<phiên bản> */}
+      {/* Trang xem bài giảng: /bai-giang-dien-tu/<mã môn>/<phiên bản> */}
       <Route
-        path="/bai-giang-dien-tu/:maMon/:version"
+        path={ROUTES.coursePlayer}
         element={
-          user ? (
-            <CoursePlayer user={user} onLogout={logout} />
-          ) : (
-            <Navigate to="/" replace />
-          )
+          <ProtectedRoute>
+            <CoursePlayerPage />
+          </ProtectedRoute>
         }
       />
       {/* Không có phiên bản -> mặc định */}
       <Route
-        path="/bai-giang-dien-tu/:maMon"
+        path={ROUTES.coursePlayerNoVersion}
         element={
-          user ? (
-            <CoursePlayer user={user} onLogout={logout} />
-          ) : (
-            <Navigate to="/" replace />
-          )
+          <ProtectedRoute>
+            <CoursePlayerPage />
+          </ProtectedRoute>
         }
       />
 
       {/* Mọi đường dẫn khác -> về trang phù hợp */}
       <Route
         path="*"
-        element={<Navigate to={user ? '/trang-chu' : '/'} replace />}
+        element={<Navigate to={user ? ROUTES.dashboard : ROUTES.home} replace />}
       />
     </Routes>
   )

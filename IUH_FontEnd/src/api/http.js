@@ -1,16 +1,18 @@
-import axios from 'axios';
+import axios from 'axios'
+import { API_BASE_URL, STORAGE_KEYS } from '../constants'
 
+// Axios instance dùng chung cho toàn app.
 const http = axios.create({
-  baseURL: '/api',
-});
+  baseURL: API_BASE_URL,
+})
 
-// Tự gắn JWT vào mọi request nếu có
+// Tự gắn JWT vào mọi request nếu có.
 http.interceptors.request.use((config) => {
-  const token = localStorage.getItem('moodle_token');
+  const token = localStorage.getItem(STORAGE_KEYS.token)
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    config.headers.Authorization = `Bearer ${token}`
   }
-  return config;
-});
+  return config
+})
 
-export default http;
+export default http

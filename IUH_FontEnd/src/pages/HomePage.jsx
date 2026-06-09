@@ -1,41 +1,42 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react'
+import { useAuth } from '../contexts/AuthContext'
 
 /* ---------- Số đếm động khi cuộn tới ---------- */
 function CountUp({ end, suffix = '', duration = 1500 }) {
-  const [val, setVal] = useState(0);
-  const ref = useRef(null);
-  const started = useRef(false);
+  const [val, setVal] = useState(0)
+  const ref = useRef(null)
+  const started = useRef(false)
 
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+    const el = ref.current
+    if (!el) return
     const io = new IntersectionObserver(
       (entries) => {
         entries.forEach((e) => {
           if (e.isIntersecting && !started.current) {
-            started.current = true;
-            const t0 = performance.now();
+            started.current = true
+            const t0 = performance.now()
             const tick = (t) => {
-              const p = Math.min((t - t0) / duration, 1);
-              setVal(Math.floor(p * end));
-              if (p < 1) requestAnimationFrame(tick);
-            };
-            requestAnimationFrame(tick);
+              const p = Math.min((t - t0) / duration, 1)
+              setVal(Math.floor(p * end))
+              if (p < 1) requestAnimationFrame(tick)
+            }
+            requestAnimationFrame(tick)
           }
-        });
+        })
       },
       { threshold: 0.4 }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [end, duration]);
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [end, duration])
 
   return (
     <span ref={ref}>
       {val.toLocaleString('vi-VN')}
       {suffix}
     </span>
-  );
+  )
 }
 
 /* ---------- Dữ liệu Khoa/Viện ---------- */
@@ -70,7 +71,7 @@ const FACULTIES = [
     name: 'Công nghệ Hóa học',
     subjects: ['Hóa đại cương', 'Hóa hữu cơ', 'Kỹ thuật phản ứng', 'Hóa phân tích'],
   },
-];
+]
 
 const FAQS = [
   {
@@ -85,26 +86,24 @@ const FAQS = [
     q: 'Tôi là tân sinh viên, dùng tài khoản nào để đăng nhập?',
     a: 'Dùng đúng tài khoản (MSSV + mật khẩu) do nhà trường cấp khi nhập học.',
   },
-];
+]
 
-export default function Home({ login }) {
-  const scrollToTop = () =>
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+export default function HomePage() {
+  const { login } = useAuth()
+
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
 
   const heroBg = {
     backgroundImage:
       "linear-gradient(rgba(11,42,90,0.88), rgba(11,42,90,0.94)), url('/campus.jpg')",
     backgroundSize: 'cover',
     backgroundPosition: 'center',
-  };
+  }
 
   return (
     <div className="w-full text-slate-800">
       {/* ===== 1. HERO & ĐĂNG NHẬP ===== */}
-      <section
-        className="relative flex min-h-screen w-full items-center"
-        style={heroBg}
-      >
+      <section className="relative flex min-h-screen w-full items-center" style={heroBg}>
         <div className="mx-auto grid w-full max-w-6xl items-center gap-10 px-6 py-16 lg:grid-cols-2">
           {/* Giới thiệu */}
           <div className="text-center text-white lg:text-left">
@@ -251,29 +250,29 @@ export default function Home({ login }) {
         </div>
       </footer>
     </div>
-  );
+  )
 }
 
 /* ---------- Form đăng nhập hiển thị trực tiếp ---------- */
 function LoginForm({ login }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
+    e.preventDefault()
+    setLoading(true)
+    setError('')
     try {
-      await login(username, password);
+      await login(username, password)
     } catch (err) {
-      setError(err?.response?.data?.message || 'Sai tài khoản hoặc mật khẩu');
+      setError(err?.response?.data?.message || 'Sai tài khoản hoặc mật khẩu')
     } finally {
-      setLoading(false);
-      setPassword(''); // không giữ mật khẩu trong state sau khi submit
+      setLoading(false)
+      setPassword('') // không giữ mật khẩu trong state sau khi submit
     }
-  };
+  }
 
   return (
     <div className="mx-auto w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
@@ -321,12 +320,12 @@ function LoginForm({ login }) {
         Hệ thống dành riêng cho Giảng viên và Sinh viên Đại học Công nghiệp TP.HCM.
       </p>
     </div>
-  );
+  )
 }
 
 /* ---------- Thẻ Khoa/Viện (mở rộng xem môn) ---------- */
 function FacultyCard({ faculty, onLogin }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(false)
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md">
       <button
@@ -359,5 +358,5 @@ function FacultyCard({ faculty, onLogin }) {
         </ul>
       )}
     </div>
-  );
+  )
 }

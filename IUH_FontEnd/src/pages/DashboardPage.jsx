@@ -1,11 +1,15 @@
 import { Link } from 'react-router-dom'
 import { BookOpen } from 'lucide-react'
-import Layout from './Layout'
-import CourseList from './CourseList'
+import Layout from '../components/Layout'
+import CourseList from '../components/CourseList'
+import { useAuth } from '../contexts/AuthContext'
+import { ROUTES } from '../constants'
 
-export default function Dashboard({ user, onLogout }) {
+export default function DashboardPage() {
+  const { user, logout } = useAuth()
+
   return (
-    <Layout user={user} onLogout={onLogout}>
+    <Layout user={user} onLogout={logout}>
       <main className="mx-auto w-full max-w-5xl px-4 py-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -15,7 +19,7 @@ export default function Dashboard({ user, onLogout }) {
             )}
           </div>
           <Link
-            to="/quan-ly-bai-giang"
+            to={ROUTES.quanLyBaiGiang}
             className="flex items-center gap-1.5 rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700"
           >
             <BookOpen size={16} /> Quản lý bài giảng

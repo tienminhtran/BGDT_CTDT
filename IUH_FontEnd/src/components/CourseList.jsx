@@ -1,12 +1,11 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { GraduationCap, ExternalLink } from 'lucide-react';
-import http from '../api/http';
-
-const LMS_BASE = 'https://lms.iuh.edu.vn';
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { GraduationCap, ExternalLink } from 'lucide-react'
+import { courseService } from '../services'
+import { STORAGE_KEYS, buildLmsCourseUrl, buildCoursePlayerPath } from '../constants'
 
 function ProgressBar({ value }) {
-  const pct = Math.round(value ?? 0);
+  const pct = Math.round(value ?? 0)
   return (
     <div className="mt-3">
       <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
@@ -17,50 +16,50 @@ function ProgressBar({ value }) {
       </div>
       <span className="mt-1 block text-xs text-slate-500">Tiến độ {pct}%</span>
     </div>
-  );
+  )
 }
 
 export default function CourseList() {
-  const navigate = useNavigate();
-  const [state, setState] = useState({ loading: true, courses: [], error: '' });
-  const [path, setPath] = useState('');
+  const navigate = useNavigate()
+  const [state, setState] = useState({ loading: true, courses: [], error: '' })
+  const [path, setPath] = useState('')
 
   // Nhập "mã môn/phiên bản" (vd 2101420/1) hoặc dán cả URL -> Enter để vào học.
   // Quyền truy cập được kiểm tra ở trang bài giảng (theo mã môn).
   const goToLesson = (e) => {
-    e.preventDefault();
-    let v = path.trim();
-    if (!v) return;
+    e.preventDefault()
+    let v = path.trim()
+    if (!v) return
 
     // Nếu người dùng dán nguyên URL: lấy phần sau 'bai-giang-dien-tu/'
-    const marker = 'bai-giang-dien-tu/';
-    const idx = v.indexOf(marker);
-    if (idx !== -1) v = v.slice(idx + marker.length);
+    const marker = 'bai-giang-dien-tu/'
+    const idx = v.indexOf(marker)
+    if (idx !== -1) v = v.slice(idx + marker.length)
 
-    v = v.replace(/^\/+/, '').replace(/\/+$/, ''); // bỏ dấu / thừa
-    if (v) navigate(`/bai-giang-dien-tu/${v}`);
-  };
+    v = v.replace(/^\/+/, '').replace(/\/+$/, '') // bỏ dấu / thừa
+    if (v) navigate(buildCoursePlayerPath(v))
+  }
 
   useEffect(() => {
     // Không có wstoken (vào bằng phiên LMS qua extension) -> không gọi được API này
-    if (!localStorage.getItem('moodle_token')) {
-      setState({ loading: false, courses: [], error: 'no-token' });
-      return;
+    if (!localStorage.getItem(STORAGE_KEYS.token)) {
+      setState({ loading: false, courses: [], error: 'no-token' })
+      return
     }
-    http
-      .get('/courses')
-      .then((res) => setState({ loading: false, courses: res.data.courses, error: '' }))
+    courseService
+      .getMyCourses()
+      .then((courses) => setState({ loading: false, courses, error: '' }))
       .catch((err) =>
         setState({
           loading: false,
           courses: [],
           error: err?.response?.data?.message || 'Không tải được danh sách môn học',
         })
-      );
-  }, []);
+      )
+  }, [])
 
   if (state.loading) {
-    return <p className="mt-8 text-slate-500">Đang tải môn học...</p>;
+    return <p className="mt-8 text-slate-500">Đang tải môn học...</p>
   }
 
   if (state.error === 'no-token') {
@@ -68,15 +67,15 @@ export default function CourseList() {
       <p className="mt-8 rounded-lg bg-amber-50 p-4 text-sm text-amber-700">
         Đăng nhập bằng tài khoản LMS (nút Đăng nhập) để xem danh sách môn học của bạn.
       </p>
-    );
+    )
   }
 
   if (state.error) {
-    return <p className="mt-8 text-red-600">{state.error}</p>;
+    return <p className="mt-8 text-red-600">{state.error}</p>
   }
 
   if (!state.courses.length) {
-    return <p className="mt-8 text-slate-500">Bạn chưa tham gia môn học nào.</p>;
+    return <p className="mt-8 text-slate-500">Bạn chưa tham gia môn học nào.</p>
   }
 
   return (
@@ -121,7 +120,7 @@ export default function CourseList() {
             {/* Nút vào khóa học trên LMS */}
             <div className="mt-auto pt-4">
               <a
-                href={`${LMS_BASE}/course/view.php?id=${c.id}`}
+                href={buildLmsCourseUrl(c.id)}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center justify-center gap-1.5 rounded-sm border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-green-400 hover:text-green-700"
@@ -134,5 +133,5 @@ export default function CourseList() {
         ))}
       </div>
     </div>
-  );
+  )
 }
