@@ -10,7 +10,7 @@ export default function DashboardPage() {
 
   return (
     <Layout user={user} onLogout={logout}>
-      <main className="mx-auto w-full max-w-5xl px-4 py-6">
+      <main className="w-full px-6 py-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold">Xin chào, {user.fullname}</h1>
@@ -20,7 +20,7 @@ export default function DashboardPage() {
           </div>
           <Link
             to={ROUTES.quanLyBaiGiang}
-            className="flex items-center gap-1.5 rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700"
+            className="flex items-center gap-1.5 rounded-md bg-[#115EA8] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0d4a82]"
           >
             <BookOpen size={16} /> Quản lý bài giảng
           </Link>

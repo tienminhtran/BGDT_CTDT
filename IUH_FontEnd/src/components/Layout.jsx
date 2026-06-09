@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, LogOut, User } from 'lucide-react'
+import logo from '../assets/logo-white.svg'
 
 export default function Layout({ user, onLogout, children }) {
   const [open, setOpen] = useState(false)
@@ -17,8 +18,10 @@ export default function Layout({ user, onLogout, children }) {
   return (
     <div className="min-h-screen w-full bg-gray-50">
       {/* Header cố định luôn nằm trên cùng */}
-      <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between border-green-700 bg-green-600 px-4 py-3 text-white shadow-sm">
-        <span className="font-semibold">IUH · Bài giảng điện tử</span>
+      <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between bg-[#115EA8] px-4 py-3 text-white shadow-sm">
+        <span className="flex items-center gap-2 font-semibold" onClick={() => window.location.href = '/'}>
+          <img src={logo} alt="IUH" className="w-28 object-contain" />
+        </span>
 
         {/* Bấm vào tên -> xổ menu Đăng xuất */}
         {user && (
@@ -29,12 +32,14 @@ export default function Layout({ user, onLogout, children }) {
               className="flex items-center gap-1.5 rounded px-2 py-1.5 text-sm hover:bg-white/10"
             >
               <User size={16} />
-              {user.fullname}
+              {/* Điện thoại: hiện MSSV (username); laptop: hiện họ tên đầy đủ */}
+              <span className="sm:hidden">{user.username || user.fullname}</span>
+              <span className="hidden sm:inline">{user.fullname}</span>
               <ChevronDown size={14} />
             </button>
 
             {open && (
-              <div className="absolute right-0 z-20 mt-1 w-40 rounded-lg bg-white py-1 shadow-lg">
+              <div className="absolute right-0 z-20 mt-1 w-40 bg-white py-1 shadow-lg">
                 <button
                   type="button"
                   onClick={onLogout}
@@ -43,12 +48,6 @@ export default function Layout({ user, onLogout, children }) {
                   <LogOut size={16} />
                   Đăng xuất
                 </button>
-
-                {/* thông tin sinh viên */}
-                <div className="px-3 py-2 text-sm text-gray-500">
-                  <p>{user.email}</p>
-                  {user.username && <p>MSSV: {user.username}</p>}
-                </div>
               </div>
             )}
           </div>

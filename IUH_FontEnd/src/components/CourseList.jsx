@@ -10,7 +10,7 @@ function ProgressBar({ value }) {
     <div className="mt-3">
       <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
         <div
-          className="h-full rounded-full bg-green-600 transition-all"
+          className="h-full rounded-full bg-[#115EA8] transition-all"
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -80,7 +80,7 @@ export default function CourseList() {
 
   return (
     <div className="mt-8">
-      <h2 className="mb-4 text-xl font-bold text-green-700">
+      <h2 className="mb-4 text-xl font-bold text-[#115EA8]">
         Môn học của bạn ({state.courses.length})
       </h2>
 
@@ -94,11 +94,11 @@ export default function CourseList() {
           value={path}
           onChange={(e) => setPath(e.target.value)}
           placeholder="Nhập đường dẫn vào học, vd: 2101420/1  (mã môn / phiên bản)"
-          className="flex-1 rounded-sm border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-500"
+          className="flex-1 rounded-sm border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#115EA8]"
         />
         <button
           type="submit"
-          className="flex items-center justify-center gap-1.5 rounded-sm bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700"
+          className="flex items-center justify-center gap-1.5 rounded-sm bg-[#115EA8] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0d4a82]"
         >
           <GraduationCap size={16} />
           Vào học
@@ -109,7 +109,7 @@ export default function CourseList() {
         {state.courses.map((c) => (
           <div
             key={c.id}
-            className="flex h-full flex-col border border-slate-200 bg-white p-5 shadow-sm transition hover:border-green-300 hover:shadow-md"
+            className="flex h-full flex-col border border-slate-200 bg-white p-5 shadow-sm transition hover:border-[#115EA8] hover:shadow-md"
           >
             <h3 className="line-clamp-2 min-h-[3rem] font-semibold text-slate-800">
               {c.fullname}
@@ -123,7 +123,7 @@ export default function CourseList() {
                 href={buildLmsCourseUrl(c.id)}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center justify-center gap-1.5 rounded-sm border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-green-400 hover:text-green-700"
+                className="flex items-center justify-center gap-1.5 rounded-sm border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-[#115EA8] hover:text-[#115EA8]"
               >
                 <ExternalLink size={16} />
                 Vào LMS

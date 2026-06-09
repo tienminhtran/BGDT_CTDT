@@ -80,8 +80,8 @@ export default function QuanLyBaiGiangPage() {
 
   return (
     <Layout user={user} onLogout={logout}>
-      <main className="mx-auto w-full max-w-5xl px-4 py-6">
-        <h1 className="flex items-center gap-2 text-xl font-semibold text-green-700">
+      <main className="w-full px-6 py-6">
+        <h1 className="flex items-center gap-2 text-xl font-semibold text-[#115EA8]">
           <BookOpen size={22} /> Quản lý bài giảng
         </h1>
         <p className="mt-1 text-sm text-gray-500">
@@ -102,7 +102,7 @@ export default function QuanLyBaiGiangPage() {
               value={monHocId}
               onChange={onChonMon}
               disabled={loadingMon}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-500"
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#115EA8]"
             >
               <option value="">
                 {loadingMon ? 'Đang tải...' : '-- Chọn môn học --'}
@@ -121,7 +121,7 @@ export default function QuanLyBaiGiangPage() {
               value={versionId}
               onChange={onChonVersion}
               disabled={!monDangChon}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-500 disabled:bg-slate-100"
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#115EA8] disabled:bg-slate-100"
             >
               <option value="">-- Chọn phiên bản --</option>
               {versions.map((v) => (
@@ -232,7 +232,7 @@ function ChuongItem({ row, onUploaded }) {
             <button
               type="button"
               onClick={xemTruoc}
-              className="mt-2 inline-flex items-center gap-1.5 text-sm text-green-700 hover:underline"
+              className="mt-2 inline-flex items-center gap-1.5 text-sm text-[#115EA8] hover:underline"
             >
               <PlayCircle size={16} /> {preview ? 'Ẩn xem trước' : 'Xem trước'}
             </button>
@@ -258,7 +258,7 @@ function ChuongItem({ row, onUploaded }) {
             type="button"
             onClick={upload}
             disabled={!file || uploading}
-            className="flex items-center gap-1.5 rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-md bg-[#115EA8] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#0d4a82] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {uploading ? (
               <Loader2 className="animate-spin" size={16} />
@@ -271,7 +271,7 @@ function ChuongItem({ row, onUploaded }) {
       </div>
 
       {msg && (
-        <p className="mt-2 flex items-center gap-1.5 text-sm text-green-700">
+        <p className="mt-2 flex items-center gap-1.5 text-sm text-[#115EA8]">
           <CheckCircle2 size={15} /> {msg}
         </p>
       )}

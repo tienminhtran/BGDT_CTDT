@@ -92,9 +92,10 @@ Tải 1 file video lên cho 1 bài giảng. Backend lưu video gốc vào `strea
 ```
 POST /api/baigiang/:id/upload-video
 Content-Type: multipart/form-data
-Authorization: Bearer <wstoken>
 x-api-key: <UPLOAD_API_KEY>
 ```
+
+> Endpoint này **không cần** đăng nhập LMS (wstoken). Chỉ cần `x-api-key` đúng — phù hợp cho công cụ upload riêng (desktop, script…).
 
 ### Tham số đường dẫn (path)
 
@@ -107,7 +108,6 @@ x-api-key: <UPLOAD_API_KEY>
 | Header | Bắt buộc | Mô tả |
 |--------|----------|-------|
 | `x-api-key` | ✅ | Khóa bí mật, phải khớp `UPLOAD_API_KEY` cấu hình ở backend. Sai/thiếu → `401`. Bảo vệ riêng cho endpoint upload |
-| `Authorization` | ✅ | `Bearer <wstoken>` — wstoken LMS để xác thực |
 | `Content-Type` | ✅ | `multipart/form-data` (client tự set kèm boundary khi gửi `FormData`) |
 
 ### Body — `multipart/form-data`
@@ -155,7 +155,6 @@ x-api-key: <UPLOAD_API_KEY>
 |-----------|------|--------------|
 | Thiếu / sai `x-api-key` | `401` | `{ "message": "API key không hợp lệ" }` |
 | Server chưa cấu hình `UPLOAD_API_KEY` | `500` | `{ "message": "Chưa cấu hình UPLOAD_API_KEY trên server" }` |
-| Thiếu / sai wstoken | `401` | `{ "message": "Chưa đăng nhập" }` |
 | Không gửi field `video` | `400` | `{ "message": "Thiếu file video" }` |
 | File vượt `MAX_VIDEO_MB` | `413` | `{ "message": "Video quá dung lượng cho phép" }` |
 | Không tìm thấy bài giảng `:id` | `404` | `{ "message": "Không tìm thấy bài giảng" }` |
@@ -167,7 +166,6 @@ x-api-key: <UPLOAD_API_KEY>
 ```bash
 curl -X POST http://localhost:3000/api/baigiang/6/upload-video \
   -H "x-api-key: <UPLOAD_API_KEY>" \
-  -H "Authorization: Bearer <wstoken>" \
   -F "video=@bai1.mp4"
 ```
 
@@ -178,13 +176,24 @@ form.append('video', file) // file từ <input type="file">
 
 const res = await fetch(`/api/baigiang/${baiGiangId}/upload-video`, {
   method: 'POST',
-  headers: {
-    'x-api-key': UPLOAD_API_KEY,           // khớp UPLOAD_API_KEY của backend
-    Authorization: `Bearer ${wstoken}`,    // KHÔNG tự set Content-Type
-  },
+  headers: { 'x-api-key': UPLOAD_API_KEY }, // KHÔNG tự set Content-Type
   body: form,
 })
 const data = await res.json()
+```
+
+**C# (HttpClient + MultipartFormDataContent)**
+```csharp
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("x-api-key", apiKey); // chỉ cần apiKey, bỏ wstoken
+
+using var form = new MultipartFormDataContent();
+using var fs = File.OpenRead(filePath);
+form.Add(new StreamContent(fs), "video", Path.GetFileName(filePath));
+
+var res = await client.PostAsync(
+    $"http://localhost:3000/api/baigiang/{baiGiangId}/upload-video", form);
+var json = await res.Content.ReadAsStringAsync();
 ```
 
 ---

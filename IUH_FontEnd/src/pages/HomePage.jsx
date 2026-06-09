@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import bgImage from '../assets/bg.jpg'
+import logo from '../assets/logo.svg'
 
 /* ---------- Số đếm động khi cuộn tới ---------- */
 function CountUp({ end, suffix = '', duration = 1500 }) {
@@ -94,8 +96,8 @@ export default function HomePage() {
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
 
   const heroBg = {
-    backgroundImage:
-      "linear-gradient(rgba(11,42,90,0.88), rgba(11,42,90,0.94)), url('/campus.jpg')",
+    backgroundImage: `url(${bgImage})`,
+    backgroundColor: '#1e3a8a',
     backgroundSize: 'cover',
     backgroundPosition: 'center',
   }
@@ -103,14 +105,20 @@ export default function HomePage() {
   return (
     <div className="w-full text-slate-800">
       {/* ===== 1. HERO & ĐĂNG NHẬP ===== */}
-      <section className="relative flex min-h-screen w-full items-center" style={heroBg}>
-        <div className="mx-auto grid w-full max-w-6xl items-center gap-10 px-6 py-16 lg:grid-cols-2">
+      <section className="relative flex min-h-screen w-full items-center overflow-hidden">
+        {/* Lớp ảnh nền mờ (chỉ blur ảnh, không blur nội dung) */}
+        <div
+          className="absolute inset-0 scale-110 blur-md"
+          style={heroBg}
+          aria-hidden="true"
+        />
+        <div className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-10 px-6 py-16 lg:grid-cols-2">
           {/* Giới thiệu */}
-          <div className="text-center text-white lg:text-left">
+          <div className="text-center lg:text-left" style={{ color: '#153898' }}>
             <h1 className="text-4xl font-extrabold leading-tight sm:text-5xl">
               HỆ THỐNG BÀI GIẢNG ĐIỆN TỬ IUH
             </h1>
-            <p className="mt-5 text-lg text-blue-100">
+            <p className="mt-5 text-lg">
               Kho học liệu số chính thức của Trường Đại học Công nghiệp TP.HCM —
               học mọi lúc, mọi nơi.
             </p>
@@ -119,136 +127,7 @@ export default function HomePage() {
           {/* Form đăng nhập (hiển thị trực tiếp) */}
           <LoginForm login={login} />
         </div>
-
-        {/* Mũi tên cuộn xuống */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 animate-bounce text-2xl text-white/70">
-          ↓
-        </div>
       </section>
-
-      {/* ===== 2. GIỚI THIỆU & THỐNG KÊ ===== */}
-      <section className="w-full bg-slate-50 py-20">
-        <div className="mx-auto max-w-6xl px-6 text-center">
-          <h2 className="text-3xl font-bold text-blue-900">
-            Về Hệ thống Bài giảng Điện tử IUH
-          </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-slate-600">
-            Nền tảng tập trung toàn bộ học liệu số được chuẩn hóa của các Khoa/Viện,
-            phục vụ việc dạy và học chủ động cho hàng chục nghìn sinh viên.
-          </p>
-
-          <div className="mt-12 grid gap-6 sm:grid-cols-3">
-            {[
-              { end: 500, suffix: '+', label: 'Học phần trực tuyến' },
-              { end: 20000, suffix: '+', label: 'Bài giảng / Video chất lượng cao' },
-              { end: 100, suffix: '%', label: 'Giảng viên chuẩn hóa học liệu số' },
-            ].map((s) => (
-              <div
-                key={s.label}
-                className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
-              >
-                <div className="text-4xl font-extrabold text-red-700">
-                  <CountUp end={s.end} suffix={s.suffix} />
-                </div>
-                <p className="mt-2 text-slate-600">{s.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ===== 3. KHOA / VIỆN ĐÀO TẠO ===== */}
-      <section className="w-full py-20">
-        <div className="mx-auto max-w-6xl px-6">
-          <h2 className="text-center text-3xl font-bold text-blue-900">
-            Kho bài giảng theo Khoa / Viện
-          </h2>
-          <p className="mt-3 text-center text-slate-600">
-            Chọn một Khoa để xem các môn học công khai. Đăng nhập để vào học.
-          </p>
-
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {FACULTIES.map((f) => (
-              <FacultyCard key={f.name} faculty={f} onLogin={scrollToTop} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ===== 4. TRỢ GIÚP & HƯỚNG DẪN ===== */}
-      <section className="w-full bg-slate-50 py-20">
-        <div className="mx-auto max-w-6xl px-6">
-          <h2 className="text-center text-3xl font-bold text-blue-900">
-            Trợ giúp & Hướng dẫn
-          </h2>
-
-          {/* 3 bước */}
-          <div className="mt-10 grid gap-6 sm:grid-cols-3">
-            {[
-              ['1', 'Bấm Đăng nhập', 'Chọn "Đăng nhập bằng tài khoản LMS" ở đầu trang.'],
-              ['2', 'Nhập tài khoản', 'Dùng tài khoản (MSSV) do trường cấp.'],
-              ['3', 'Chọn môn học', 'Vào danh sách môn học và bắt đầu xem bài giảng.'],
-            ].map(([n, t, d]) => (
-              <div key={n} className="rounded-2xl bg-white p-6 shadow-sm">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-900 font-bold text-white">
-                  {n}
-                </div>
-                <h3 className="mt-4 font-semibold text-slate-800">{t}</h3>
-                <p className="mt-1 text-sm text-slate-600">{d}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* FAQ */}
-          <div className="mx-auto mt-12 max-w-3xl space-y-3">
-            {FAQS.map((f) => (
-              <details
-                key={f.q}
-                className="group rounded-xl border border-slate-200 bg-white p-4"
-              >
-                <summary className="cursor-pointer list-none font-medium text-slate-800 marker:hidden">
-                  <span className="text-red-700">▸ </span>
-                  {f.q}
-                </summary>
-                <p className="mt-2 text-sm text-slate-600">{f.a}</p>
-              </details>
-            ))}
-          </div>
-
-          <div className="mt-8 text-center">
-            <a
-              href="/huong-dan-su-dung.pdf"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-block rounded-xl border-2 border-blue-900 px-6 py-3 font-semibold text-blue-900 transition hover:bg-blue-900 hover:text-white"
-            >
-              📄 Hướng dẫn sử dụng hệ thống (PDF)
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* ===== 5. CHÂN TRANG ===== */}
-      <footer className="w-full bg-blue-950 py-12 text-blue-100">
-        <div className="mx-auto grid max-w-6xl gap-8 px-6 sm:grid-cols-3">
-          <div>
-            <h3 className="text-lg font-bold text-white">IUH · Bài giảng điện tử</h3>
-            <p className="mt-3 text-sm">
-              © 2026 Trường Đại học Công nghiệp TP.HCM (IUH).
-            </p>
-          </div>
-          <div>
-            <h4 className="font-semibold text-white">Liên hệ</h4>
-            <p className="mt-3 text-sm">Phòng Đào tạo</p>
-            <p className="text-sm">Trung tâm Công nghệ Thông tin IUH</p>
-          </div>
-          <div>
-            <h4 className="font-semibold text-white">Hỗ trợ kỹ thuật</h4>
-            <p className="mt-3 text-sm">Hotline: (028) 3894 0390</p>
-            <p className="text-sm">Email: cntt@iuh.edu.vn</p>
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }
@@ -275,12 +154,11 @@ function LoginForm({ login }) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
+    <div className="mx-auto w-full max-w-md rounded-sm bg-white p-8 shadow-2xl">
       <img
-        src="/iuh-logo.png"
+        src={logo}
         alt="IUH"
-        className="mx-auto h-20 w-20 object-contain"
-        onError={(e) => (e.currentTarget.style.display = 'none')}
+        className="mx-auto w-40 object-contain"
       />
       <h2 className="mt-4 text-center text-xl font-bold text-blue-900">
         Đăng nhập hệ thống
@@ -309,10 +187,10 @@ function LoginForm({ login }) {
 
         <button
           type="submit"
-          disabled={loading || !username || !password}
-          className="rounded-xl bg-blue-600 px-6 py-3.5 text-base font-semibold text-white shadow transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+          // disabled={loading || !username || !password}
+          className="bg-blue-600 px-6 py-3.5 text-base font-semibold text-white shadow transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
         >
-          {loading ? 'Đang đăng nhập...' : 'Đăng nhập bằng tài khoản LMS'}
+          {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
         </button>
       </form>
 

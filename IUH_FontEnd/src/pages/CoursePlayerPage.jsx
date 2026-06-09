@@ -79,7 +79,7 @@ export default function CoursePlayerPage() {
     <button
       type="button"
       onClick={() => navigate(ROUTES.dashboard)}
-      className="mb-4 inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-green-700"
+      className="mb-4 inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-[#115EA8]"
     >
       <ArrowLeft size={16} />
       Về danh sách môn học
@@ -184,19 +184,19 @@ export default function CoursePlayerPage() {
                           type="button"
                           onClick={() => setActiveId(v.baiGiangId)}
                           className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-slate-50 ${
-                            isActive ? 'bg-green-50' : ''
+                            isActive ? 'bg-[#115EA8]/10' : ''
                           }`}
                         >
                           <span className="mt-0.5 shrink-0">
                             <PlayCircle
                               size={18}
-                              className={isActive ? 'text-green-700' : 'text-slate-400'}
+                              className={isActive ? 'text-[#115EA8]' : 'text-slate-400'}
                             />
                           </span>
                           <span className="min-w-0 flex-1">
                             <span
                               className={`block text-sm font-medium ${
-                                isActive ? 'text-green-800' : 'text-slate-700'
+                                isActive ? 'text-[#0d4a82]' : 'text-slate-700'
                               }`}
                             >
                               {i + 1}. {tieuDe(v)}
