@@ -3,15 +3,14 @@ const controller = require('../controllers/sinhVienHocPhan.controller');
 
 const router = express.Router();
 
-// POST /api/sinhvien-hocphan/import  (Bearer wstoken)
+// POST /api/student-courses/import  (Bearer wstoken)
 router.post('/import', controller.importFromLms);
 
-// GET /api/sinhvien-hocphan/kiem-tra/:maMon  (Bearer wstoken)
-// Đặt trước /:mssv để không bị nuốt route (đây là 2 segment nên thực tế không đụng,
-// nhưng để rõ ý ưu tiên).
-router.get('/kiem-tra/:maMon', controller.kiemTraMon);
+// GET /api/student-courses/access?course=<token>  (Bearer wstoken)
+// Kiểm tra SV có quyền học khóa (token mờ) không. Đặt trước /:studentId.
+router.get('/access', controller.kiemTraMon);
 
-// GET /api/sinhvien-hocphan/:mssv
-router.get('/:mssv', controller.listByMssv);
+// GET /api/student-courses/:studentId
+router.get('/:studentId', controller.listByMssv);
 
 module.exports = router;

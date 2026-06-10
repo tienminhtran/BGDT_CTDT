@@ -1,4 +1,4 @@
-// Tập trung toàn bộ đường dẫn API của backend.
+// Tập trung toàn bộ đường dẫn API của backend (đặt tên tiếng Anh).
 // Endpoint động (có id) là hàm trả về chuỗi để service gọi cho gọn.
 export const ENDPOINTS = {
   auth: {
@@ -6,21 +6,21 @@ export const ENDPOINTS = {
     me: '/auth/me',
   },
   courses: '/courses',
-  monHoc: '/monhoc',
-  baiGiang: {
-    chiTiet: '/baigiang/chi-tiet',
-    danhSach: '/baigiang/danh-sach',
-    ensure: (chiTietId) => `/baigiang/chi-tiet/${chiTietId}/ensure`,
-    uploadVideo: (baiGiangId) => `/baigiang/${baiGiangId}/upload-video`,
-    playbackToken: (baiGiangId) => `/baigiang/${baiGiangId}/playback-token`,
+  subjects: '/subjects',
+  lectures: {
+    list: '/lectures', // ?course=<token>
+    token: '/lectures/token', // POST { courseCode, version } -> { token }
+    chapters: '/lectures/chapters', // ?subjectVersionId=<id>
+    ensureChapter: (chapterId) => `/lectures/chapters/${chapterId}/ensure`,
+    video: (lectureId) => `/lectures/${lectureId}/video`,
+    playbackToken: (lectureId) => `/lectures/${lectureId}/playback-token`,
   },
-  sinhVienHocPhan: {
-    import: '/sinhvien-hocphan/import',
-    kiemTra: (maMon) => `/sinhvien-hocphan/kiem-tra/${encodeURIComponent(maMon)}`,
+  studentCourses: {
+    import: '/student-courses/import',
+    access: '/student-courses/access', // ?course=<token>
   },
-  danhGia: {
-    // Dùng chung cho GET danh sách, POST tạo, PUT sửa
-    baiGiang: (baiGiangId) => `/danhgia/${baiGiangId}`,
-    cuaToi: (baiGiangId) => `/danhgia/${baiGiangId}/sinh-vien`,
+  reviews: {
+    byLecture: (lectureId) => `/reviews/${lectureId}`,
+    mine: (lectureId) => `/reviews/${lectureId}/mine`,
   },
 }

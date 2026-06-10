@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 
 const baiGiang = require('../services/baiGiang.service');
 const moodle = require('../services/moodle.service');
+const { encodeCourse, decodeCourse } = require('../utils/courseToken');
 
 const HLS_TOKEN_TTL = process.env.HLS_TOKEN_TTL || '6h';
 
@@ -28,7 +29,7 @@ const uploadMiddleware = multer({ storage, limits: { fileSize: MAX_SIZE }, fileF
   'video'
 );
 
-// POST /api/baigiang/:id/upload-video  (field form-data: video)
+// POST /api/lectures/:id/video  (field form-data: video)
 exports.uploadVideo = async (req, res, next) => {
   const tempPath = req.file ? req.file.path : null;
   try {
@@ -50,7 +51,7 @@ exports.uploadVideo = async (req, res, next) => {
 
 exports.uploadMiddleware = uploadMiddleware;
 
-// GET /api/baigiang/:id/playback-token  (Bearer wstoken)
+// GET /api/lectures/:id/playback-token  (Bearer wstoken)
 // Phải đăng nhập LMS -> cấp token ký ngắn hạn để xem HLS của bài giảng này.
 exports.playbackToken = async (req, res, next) => {
   try {
@@ -68,14 +69,14 @@ exports.playbackToken = async (req, res, next) => {
     const token = jwt.sign({ bg: id }, process.env.JWT_SECRET, {
       expiresIn: HLS_TOKEN_TTL,
     });
-    res.json({ token, url: `/api/baigiang/${id}/hls/index.m3u8?token=${token}` });
+    res.json({ token, url: `/api/lectures/${id}/hls/index.m3u8?token=${token}` });
   } catch (err) {
     if (err.status === 401) return res.status(401).json({ message: err.message });
     next(err);
   }
 };
 
-// GET /api/baigiang/:id/hls/:file?token=<signed>
+// GET /api/lectures/:id/hls/:file?token=<signed>
 // Stream HLS qua backend (bucket private). Xác thực bằng token ký, không gọi LMS mỗi segment.
 exports.streamHls = async (req, res, next) => {
   try {
@@ -100,41 +101,59 @@ exports.streamHls = async (req, res, next) => {
   }
 };
 
-// GET /api/baigiang/danh-sach?maMon=<ma_tuquan>&version=<version>
+// GET /api/lectures?course=<token>
+// Token mờ (AES) chứa mã môn + phiên bản -> giải phía server, KHÔNG lộ mã môn ra client.
 exports.listVideos = async (req, res, next) => {
   try {
-    const { maMon, version } = req.query;
-    if (!maMon) return res.status(400).json({ message: 'Thiếu maMon' });
-    const videos = await baiGiang.listVideos(maMon, version || null);
-    res.json({ maMon, version: version || null, videos });
+    const { course } = req.query;
+    if (!course) return res.status(400).json({ message: 'Thiếu mã khóa học' });
+
+    const { maMon, version } = decodeCourse(course); // ném 400 nếu token sai
+    const { subjectName, videos } = await baiGiang.listVideos(maMon, version || null);
+    // KHÔNG trả maMon ra client; chỉ trả tên môn (để hiển thị) + phiên bản.
+    res.json({ subjectName, version: version || null, videos });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ message: err.message });
+    next(err);
+  }
+};
+
+// POST /api/lectures/token  body: { courseCode, version }
+// Sinh token mờ cho 1 khóa học để điều hướng/đặt URL mà không lộ mã môn.
+exports.createCourseToken = async (req, res, next) => {
+  try {
+    const { courseCode, version } = req.body || {};
+    if (!courseCode) return res.status(400).json({ message: 'Thiếu mã môn' });
+    const token = encodeCourse({ maMon: String(courseCode), version: version ?? null });
+    res.json({ token });
   } catch (err) {
     next(err);
   }
 };
 
-// GET /api/baigiang/chi-tiet?monHocVersionId=<id>
+// GET /api/lectures/chapters?subjectVersionId=<id>
 exports.listChiTiet = async (req, res, next) => {
   try {
-    const versionId = parseInt(req.query.monHocVersionId, 10);
+    const versionId = parseInt(req.query.subjectVersionId, 10);
     if (!Number.isInteger(versionId)) {
-      return res.status(400).json({ message: 'Thiếu hoặc sai monHocVersionId' });
+      return res.status(400).json({ message: 'Thiếu hoặc sai subjectVersionId' });
     }
     const data = await baiGiang.listChiTietByVersion(versionId);
-    res.json({ monHocVersionId: versionId, chiTiet: data });
+    res.json({ subjectVersionId: versionId, chiTiet: data });
   } catch (err) {
     next(err);
   }
 };
 
-// POST /api/baigiang/chi-tiet/:chiTietId/ensure -> tạo (nếu chưa có) & trả baiGiangId
+// POST /api/lectures/chapters/:chapterId/ensure -> tạo (nếu chưa có) & trả baiGiangId
 exports.ensureBaiGiang = async (req, res, next) => {
   try {
-    const chiTietId = parseInt(req.params.chiTietId, 10);
-    if (!Number.isInteger(chiTietId)) {
-      return res.status(400).json({ message: 'chiTietId không hợp lệ' });
+    const chapterId = parseInt(req.params.chapterId, 10);
+    if (!Number.isInteger(chapterId)) {
+      return res.status(400).json({ message: 'chapterId không hợp lệ' });
     }
-    const baiGiangId = await baiGiang.getOrCreateBaiGiang(chiTietId);
-    res.json({ chiTietId, baiGiangId });
+    const baiGiangId = await baiGiang.getOrCreateBaiGiang(chapterId);
+    res.json({ chapterId, baiGiangId });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ message: err.message });
     next(err);

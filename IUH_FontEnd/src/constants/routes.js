@@ -4,9 +4,10 @@ export const ROUTES = {
   home: '/',
   dashboard: '/trang-chu',
   quanLyBaiGiang: '/quan-ly-bai-giang',
-  coursePlayer: '/bai-giang-dien-tu/:maMon/:version',
-  coursePlayerNoVersion: '/bai-giang-dien-tu/:maMon',
+  // Token mờ (AES) do backend cấp, không lộ mã môn/phiên bản -> 1 tham số :token
+  coursePlayer: '/bai-giang-dien-tu/:token',
 }
 
-// Tạo đường dẫn vào học từ "maMon/version" (hoặc chỉ "maMon").
-export const buildCoursePlayerPath = (slug) => `/bai-giang-dien-tu/${slug}`
+// Tạo đường dẫn vào học từ token mờ (lấy qua API /lectures/token).
+export const buildCoursePlayerPath = (courseToken) =>
+  `/bai-giang-dien-tu/${courseToken}`

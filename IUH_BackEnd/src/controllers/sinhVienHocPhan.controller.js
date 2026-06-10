@@ -1,19 +1,21 @@
 const moodle = require('../services/moodle.service');
 const svhp = require('../services/sinhVienHocPhan.service');
+const { decodeCourse } = require('../utils/courseToken');
 
-// GET /api/sinhvien-hocphan/:mssv -> danh sách học phần (idnumber) của SV
+// GET /api/student-courses/:studentId -> danh sách học phần (idnumber) của SV
 exports.listByMssv = async (req, res, next) => {
   try {
-    const { mssv } = req.params;
-    const hocPhan = await svhp.getHocPhanByMssv(mssv);
-    res.json({ mssv, hocPhan });
+    const { studentId } = req.params;
+    const hocPhan = await svhp.getHocPhanByMssv(studentId);
+    res.json({ studentId, hocPhan });
   } catch (err) {
     next(err);
   }
 };
 
-// GET /api/sinhvien-hocphan/kiem-tra/:maMon  (Bearer wstoken)
-// Kiểm tra SV (lấy MSSV từ wstoken) có quyền học môn :maMon không.
+// GET /api/student-courses/access?course=<token>  (Bearer wstoken)
+// Kiểm tra SV (lấy MSSV từ wstoken) có quyền học khóa (token mờ) không.
+// KHÔNG trả mã môn ra client, chỉ trả cờ allowed.
 exports.kiemTraMon = async (req, res, next) => {
   try {
     const header = req.headers.authorization || '';
@@ -22,15 +24,16 @@ exports.kiemTraMon = async (req, res, next) => {
       return res.status(401).json({ message: 'Chưa đăng nhập' });
     }
 
-    const { maMon } = req.params;
-    const info = await moodle.getSiteInfo(wstoken);
-    const result = await svhp.kiemTraSinhVienHocMon(info.username, maMon);
+    const { course } = req.query;
+    if (!course) return res.status(400).json({ message: 'Thiếu mã khóa học' });
 
-    res.json({ mssv: info.username, maMon, ...result });
+    const { maMon } = decodeCourse(course); // ném 400 nếu token sai
+    const info = await moodle.getSiteInfo(wstoken);
+    const { allowed } = await svhp.kiemTraSinhVienHocMon(info.username, maMon);
+
+    res.json({ allowed });
   } catch (err) {
-    if (err.status === 401) {
-      return res.status(401).json({ message: err.message });
-    }
+    if (err.status) return res.status(err.status).json({ message: err.message });
     next(err);
   }
 };

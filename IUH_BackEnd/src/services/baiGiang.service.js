@@ -18,7 +18,7 @@ try {
 }
 const FFMPEG =
   (process.env.FFMPEG_PATH && process.env.FFMPEG_PATH.trim()) || ffmpegStatic || 'ffmpeg';
-console.log('🎬 ffmpeg dùng cho HLS:', FFMPEG);
+console.log('...ffmpeg dùng cho HLS:', FFMPEG);
 const HLS_TIME = parseInt(process.env.HLS_SEGMENT_TIME, 10) || 6; // độ dài mỗi chunk (giây)
 
 // Bỏ ký tự không an toàn cho đường dẫn object trên MinIO (giữ chữ, số, . _ -)
@@ -245,6 +245,7 @@ async function listVideos(maMon, version) {
            ct.NoiDungChuong AS noiDungChuong,
            bg.TenBaiGiang AS tenBaiGiang,
            mv.[version] AS version,
+           mh.tenmon AS tenMon,
            bg.LinkBaiGiang, bg.LinkChunkBaiGiang
     FROM tb_monhoc mh
     INNER JOIN tb_monhoc_version mv         ON mv.id_monhoc = mh.id
@@ -256,8 +257,8 @@ async function listVideos(maMon, version) {
     ORDER BY mv.[version], ct.Id
   `);
 
-  // KHÔNG trả URL MinIO ra client. Chỉ trả cờ có video/HLS; phát qua proxy có token.
-  return result.recordset.map((r) => ({
+  // KHÔNG trả URL MinIO / mã môn ra client. Chỉ trả tên môn (hiển thị) + cờ video/HLS.
+  const videos = result.recordset.map((r) => ({
     baiGiangId: r.baiGiangId,
     chiTietId: r.chiTietId,
     noiDungChuong: r.noiDungChuong,
@@ -266,6 +267,8 @@ async function listVideos(maMon, version) {
     coVideo: !!r.LinkBaiGiang,
     coHls: !!r.LinkChunkBaiGiang,
   }));
+
+  return { subjectName: result.recordset[0]?.tenMon ?? null, videos };
 }
 
 /**

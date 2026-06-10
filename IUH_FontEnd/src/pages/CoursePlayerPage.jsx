@@ -97,8 +97,8 @@ function DanhGiaSection({ baiGiangId, dg }) {
 
   // Đổ lại form khi đổi bài giảng / có đánh giá cũ
   useEffect(() => {
-    setSoSao(myRating?.SoSao || 0)
-    setBinhLuan(myRating?.BinhLuan || '')
+    setSoSao(myRating?.stars || 0)
+    setBinhLuan(myRating?.comment || '')
     setHover(0)
     setFormError('')
   }, [myRating, baiGiangId])
@@ -111,7 +111,7 @@ function DanhGiaSection({ baiGiangId, dg }) {
     setSubmitting(true)
     setFormError('')
     try {
-      const payload = { soSao, binhLuan: binhLuan.trim() || null }
+      const payload = { stars: soSao, comment: binhLuan.trim() || null }
       if (myRating) await danhGiaService.suaDanhGia(baiGiangId, payload)
       else await danhGiaService.taoDanhGia(baiGiangId, payload)
       await refresh()
@@ -197,7 +197,7 @@ function DanhGiaSection({ baiGiangId, dg }) {
       {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
       {myRating ? (
         <p className="mt-2 text-xs text-slate-400">
-          Bạn đã đánh giá lúc {formatNgay(myRating.NgayDanhGia)}
+          Bạn đã đánh giá lúc {formatNgay(myRating.createdAt)}
         </p>
       ) : null}
     </div>
@@ -206,37 +206,44 @@ function DanhGiaSection({ baiGiangId, dg }) {
 
 export default function CoursePlayerPage() {
   const { user, logout } = useAuth()
-  const { maMon, version } = useParams()
+  // Token mờ do backend cấp; client KHÔNG giải được mã môn từ đây.
+  const { token } = useParams()
   const navigate = useNavigate()
   const [activeId, setActiveId] = useState(null)
 
-  // Kiểm tra SV có quyền học môn này không (qua backend)
+  // Kiểm tra SV có quyền học khóa này không (backend giải token)
   const [access, setAccess] = useState({ loading: true, allowed: false })
 
-  // Danh sách video bài giảng (gọi API)
-  const [videos, setVideos] = useState({ loading: true, items: [], error: '' })
+  // Danh sách video + tên môn/phiên bản (để hiển thị) — backend trả về theo token
+  const [videos, setVideos] = useState({
+    loading: true,
+    items: [],
+    subjectName: null,
+    version: null,
+    error: '',
+  })
 
   useEffect(() => {
     let alive = true
     setAccess({ loading: true, allowed: false })
     sinhVienHocPhanService
-      .kiemTraQuyen(maMon)
+      .kiemTraQuyen(token)
       .then((allowed) => alive && setAccess({ loading: false, allowed }))
       .catch(() => alive && setAccess({ loading: false, allowed: false }))
     return () => {
       alive = false
     }
-  }, [maMon])
+  }, [token])
 
-  // Lấy danh sách video theo mã môn + phiên bản
+  // Lấy danh sách video theo token mờ
   useEffect(() => {
     let alive = true
-    setVideos({ loading: true, items: [], error: '' })
+    setVideos({ loading: true, items: [], subjectName: null, version: null, error: '' })
     baiGiangService
-      .getDanhSachVideo(maMon, version)
-      .then((items) => {
+      .getDanhSachVideo(token)
+      .then(({ subjectName, version, videos: items }) => {
         if (!alive) return
-        setVideos({ loading: false, items, error: '' })
+        setVideos({ loading: false, items, subjectName, version, error: '' })
         setActiveId(items[0]?.baiGiangId ?? null)
       })
       .catch((err) => {
@@ -244,13 +251,15 @@ export default function CoursePlayerPage() {
         setVideos({
           loading: false,
           items: [],
+          subjectName: null,
+          version: null,
           error: err?.response?.data?.message || 'Không tải được danh sách bài giảng',
         })
       })
     return () => {
       alive = false
     }
-  }, [maMon, version])
+  }, [token])
 
   const list = videos.items
   const active = list.find((v) => v.baiGiangId === activeId) ?? list[0] ?? null
@@ -306,8 +315,7 @@ export default function CoursePlayerPage() {
               Bạn không có quyền học môn này
             </h1>
             <p className="mt-1 text-sm text-amber-700">
-              Môn học <span className="font-medium">{maMon}</span> không thuộc học phần
-              nào bạn đang theo học.
+              Khóa học này không thuộc học phần nào bạn đang theo học.
             </p>
           </div>
         </main>
@@ -352,17 +360,17 @@ export default function CoursePlayerPage() {
               {/* Dòng phiên bản + điểm trung bình (chỉ hiển thị) canh hai bên */}
               <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm text-slate-500">
-                  Môn {maMon}
-                  {version ? ` · Phiên bản ${version}` : ''}
+                  {videos.subjectName ? `Môn ${videos.subjectName}` : 'Bài giảng'}
+                  {videos.version ? ` · Phiên bản ${videos.version}` : ''}
                 </p>
                 <span className="inline-flex items-center gap-1.5 text-sm text-slate-500">
-                  <StarsDisplay value={dg.summary?.diemTrungBinh || 0} size={16} />
+                  <StarsDisplay value={dg.summary?.average || 0} size={16} />
                   <span className="font-medium text-slate-600">
-                    {dg.summary?.diemTrungBinh
-                      ? `${dg.summary.diemTrungBinh.toFixed(1)}/5`
+                    {dg.summary?.average
+                      ? `${dg.summary.average.toFixed(1)}/5`
                       : 'Chưa có'}
                   </span>
-                  <span className="text-slate-400">({dg.summary?.tongSoDanhGia || 0})</span>
+                  <span className="text-slate-400">({dg.summary?.total || 0})</span>
                 </span>
               </div>
 

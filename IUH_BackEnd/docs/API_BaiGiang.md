@@ -1,6 +1,6 @@
-# API Bài giảng — Tổng hợp
+# API Bài giảng & Đánh giá — Tổng hợp
 
-Tài liệu các API liên quan tới **môn học, đăng ký bài giảng, upload và xem video bài giảng**.
+Tài liệu các API liên quan tới **môn học, đăng ký bài giảng, upload/xem video và đánh giá bài giảng**.
 
 - Base URL (dev): `http://localhost:3000/api` (FE gọi qua proxy Vite `/api`)
 - Xác thực: gửi **wstoken LMS** ở header `Authorization: Bearer <token>` (FE tự gắn từ `localStorage.moodle_token`).
@@ -9,12 +9,58 @@ Tài liệu các API liên quan tới **môn học, đăng ký bài giảng, upl
   - `stream/video.<ext>` — video gốc
   - `chunk/index.m3u8` + `seg_*.ts` — bản HLS để phát
 
+> **Đặt tên endpoint dùng tiếng Anh.** Bảng đối chiếu với tên cũ:
+>
+> | Cũ (tiếng Việt) | Mới (tiếng Anh) |
+> |---|---|
+> | `GET /monhoc` | `GET /subjects` |
+> | `GET /baigiang/chi-tiet?monHocVersionId=` | `GET /lectures/chapters?subjectVersionId=` |
+> | `POST /baigiang/chi-tiet/:id/ensure` | `POST /lectures/chapters/:chapterId/ensure` |
+> | `POST /baigiang/:id/upload-video` | `POST /lectures/:id/video` |
+> | `GET /baigiang/danh-sach?maMon=&version=` | `GET /lectures?course=<token>` |
+> | `GET /baigiang/:id/playback-token` | `GET /lectures/:id/playback-token` |
+> | `GET /baigiang/:id/hls/:file` | `GET /lectures/:id/hls/:file` |
+> | `GET /sinhvien-hocphan/kiem-tra/:maMon` | `GET /student-courses/access?course=<token>` |
+> | `/danhgia/:id` · `/danhgia/:id/sinh-vien` | `/reviews/:lectureId` · `/reviews/:lectureId/mine` |
+
+---
+
+## 0. Token khóa học (course token) — ẩn mã môn
+
+Để **không lộ mã môn (`ma_tuquan`) ra client** (URL, query, response), mã môn + phiên bản được đóng gói thành 1 **token mờ** mã hóa **AES‑256‑GCM** bằng khóa bí mật của server (`COURSE_TOKEN_SECRET`, fallback `JWT_SECRET`). Token này **chỉ server giải được** (khác Base64 — không giải ngược ở client).
+
+Token dùng cho: URL trang xem bài giảng `/bai-giang-dien-tu/<token>`, tham số `?course=<token>` ở mục 5 và mục 8.
+
+### Sinh token
+
+```
+POST /api/lectures/token
+Content-Type: application/json
+```
+
+**Body**
+```json
+{ "courseCode": "2101420", "version": "1" }
+```
+
+| Field | Bắt buộc | Mô tả |
+|-------|----------|-------|
+| `courseCode` | ✅ | Mã môn (`tb_monhoc.ma_tuquan`) |
+| `version` | ❌ | Phiên bản; bỏ trống = mọi phiên bản |
+
+**Response 200**
+```json
+{ "token": "P4FVVS8N_Sc3yNWvqBYk1KtgFEs_sCWthqg3NA7bAG88..." }
+```
+
+**Lỗi:** `400` nếu thiếu `courseCode`.
+
 ---
 
 ## 1. Danh sách môn học + phiên bản
 
 ```
-GET /api/monhoc
+GET /api/subjects
 ```
 
 **Response 200**
@@ -39,17 +85,17 @@ GET /api/monhoc
 ## 2. Danh sách chương (chi tiết đăng ký) theo phiên bản — *trang quản lý*
 
 ```
-GET /api/baigiang/chi-tiet?monHocVersionId=<id>
+GET /api/lectures/chapters?subjectVersionId=<id>
 ```
 
 | Query | Bắt buộc | Mô tả |
 |-------|----------|-------|
-| `monHocVersionId` | ✅ | Id phiên bản môn (`tb_monhoc_version.id`) |
+| `subjectVersionId` | ✅ | Id phiên bản môn (`tb_monhoc_version.id`) |
 
 **Response 200**
 ```json
 {
-  "monHocVersionId": 1,
+  "subjectVersionId": 1,
   "chiTiet": [
     {
       "chiTietId": 1,
@@ -73,12 +119,16 @@ GET /api/baigiang/chi-tiet?monHocVersionId=<id>
 Mỗi chương (chi tiết đăng ký) ứng 1 bài giảng (quan hệ 1-1). Gọi trước khi upload nếu chương chưa có bài giảng.
 
 ```
-POST /api/baigiang/chi-tiet/:chiTietId/ensure
+POST /api/lectures/chapters/:chapterId/ensure
 ```
+
+| Tham số | Vị trí | Bắt buộc | Mô tả |
+|---------|--------|----------|-------|
+| `:chapterId` | path | ✅ | `chiTietId` của chương (`tb_ChiTietDangKyBaiGiang.Id`) |
 
 **Response 200**
 ```json
-{ "chiTietId": 1, "baiGiangId": 6 }
+{ "chapterId": 1, "baiGiangId": 6 }
 ```
 
 **Lỗi:** `404` nếu không tìm thấy chi tiết đăng ký.
@@ -90,7 +140,7 @@ POST /api/baigiang/chi-tiet/:chiTietId/ensure
 Tải 1 file video lên cho 1 bài giảng. Backend lưu video gốc vào `stream/`, transcode sang HLS (ffmpeg) vào `chunk/`, rồi lưu **object key tương đối** vào DB (không lưu URL tuyệt đối).
 
 ```
-POST /api/baigiang/:id/upload-video
+POST /api/lectures/:id/video
 Content-Type: multipart/form-data
 x-api-key: <UPLOAD_API_KEY>
 ```
@@ -164,7 +214,7 @@ x-api-key: <UPLOAD_API_KEY>
 
 **curl**
 ```bash
-curl -X POST http://localhost:3000/api/baigiang/6/upload-video \
+curl -X POST http://localhost:3000/api/lectures/6/video \
   -H "x-api-key: <UPLOAD_API_KEY>" \
   -F "video=@bai1.mp4"
 ```
@@ -174,7 +224,7 @@ curl -X POST http://localhost:3000/api/baigiang/6/upload-video \
 const form = new FormData()
 form.append('video', file) // file từ <input type="file">
 
-const res = await fetch(`/api/baigiang/${baiGiangId}/upload-video`, {
+const res = await fetch(`/api/lectures/${baiGiangId}/video`, {
   method: 'POST',
   headers: { 'x-api-key': UPLOAD_API_KEY }, // KHÔNG tự set Content-Type
   body: form,
@@ -192,7 +242,7 @@ using var fs = File.OpenRead(filePath);
 form.Add(new StreamContent(fs), "video", Path.GetFileName(filePath));
 
 var res = await client.PostAsync(
-    $"http://localhost:3000/api/baigiang/{baiGiangId}/upload-video", form);
+    $"http://localhost:3000/api/lectures/{baiGiangId}/video", form);
 var json = await res.Content.ReadAsStringAsync();
 ```
 
@@ -201,20 +251,19 @@ var json = await res.Content.ReadAsStringAsync();
 ## 5. Danh sách video để xem — *trang sinh viên (CoursePlayer)*
 
 ```
-GET /api/baigiang/danh-sach?maMon=<ma_tuquan>&version=<version>
+GET /api/lectures?course=<token>
 ```
 
 | Query | Bắt buộc | Mô tả |
 |-------|----------|-------|
-| `maMon` | ✅ | Mã môn (`tb_monhoc.ma_tuquan`) |
-| `version` | ❌ | Phiên bản; bỏ trống = mọi phiên bản |
+| `course` | ✅ | **Token mờ** lấy từ mục 0 (mã hóa mã môn + phiên bản). **Không** truyền `maMon` thô. |
 
-Chỉ trả các bài giảng **đã có video**.
+Chỉ trả các bài giảng **đã có video**. Backend giải token → mã môn/phiên bản và **không trả mã môn ra ngoài** (chỉ trả `subjectName` để hiển thị).
 
 **Response 200**
 ```json
 {
-  "maMon": "2101420",
+  "subjectName": "Công nghệ phần mềm",
   "version": "1",
   "videos": [
     {
@@ -229,7 +278,9 @@ Chỉ trả các bài giảng **đã có video**.
   ]
 }
 ```
-> **Không trả URL MinIO.** Muốn phát thì xin token ở mục 6.
+> **Không trả URL MinIO, không trả mã môn.** Muốn phát thì xin token ở mục 6.
+
+**Lỗi:** `400` nếu thiếu/sai `course` (token không hợp lệ).
 
 ---
 
@@ -238,7 +289,7 @@ Chỉ trả các bài giảng **đã có video**.
 Đổi phiên đăng nhập LMS lấy **token phát video** ngắn hạn, ký riêng cho đúng 1 `baiGiangId`. Token này dùng cho mục 7 (không dùng lại wstoken khi stream).
 
 ```
-GET /api/baigiang/:id/playback-token
+GET /api/lectures/:id/playback-token
 Authorization: Bearer <wstoken>
 ```
 
@@ -259,7 +310,7 @@ Authorization: Bearer <wstoken>
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiJ9...",
-  "url": "/api/baigiang/6/hls/index.m3u8?token=eyJhbGciOiJIUzI1NiJ9..."
+  "url": "/api/lectures/6/hls/index.m3u8?token=eyJhbGciOiJIUzI1NiJ9..."
 }
 ```
 
@@ -284,7 +335,7 @@ Authorization: Bearer <wstoken>
 Endpoint trình phát thực sự gọi để tải playlist và các đoạn video. Mọi truy cập đều phải kèm `token` ở mục 6.
 
 ```
-GET /api/baigiang/:id/hls/:file?token=<token>
+GET /api/lectures/:id/hls/:file?token=<token>
 ```
 
 ### Tham số
@@ -320,7 +371,7 @@ GET /api/baigiang/:id/hls/:file?token=<token>
 import Hls from 'hls.js'
 
 // 1) Xin token (mục 6)
-const res = await fetch(`/api/baigiang/${baiGiangId}/playback-token`, {
+const res = await fetch(`/api/lectures/${baiGiangId}/playback-token`, {
   headers: { Authorization: `Bearer ${wstoken}` },
 })
 const { url } = await res.json()
@@ -338,18 +389,167 @@ if (Hls.isSupported()) {
 
 ---
 
+## 8. Sinh viên – Học phần (`/student-courses`)
+
+### 8.1. Import học phần từ LMS
+
+```
+POST /api/student-courses/import
+Authorization: Bearer <wstoken>
+```
+Tự lấy danh sách khóa học từ LMS theo wstoken rồi lưu các `idnumber` (mã học phần) SV chưa có.
+
+**Response 200**
+```json
+{ "studentId": "21001234", "added": 3, "skipped": 2, "total": 5 }
+```
+
+### 8.2. Kiểm tra quyền học khóa
+
+```
+GET /api/student-courses/access?course=<token>
+Authorization: Bearer <wstoken>
+```
+
+| Query | Bắt buộc | Mô tả |
+|-------|----------|-------|
+| `course` | ✅ | **Token mờ** (mục 0). Backend giải → mã môn rồi đối chiếu học phần của SV. |
+
+Lấy MSSV từ wstoken, kiểm tra SV có thuộc học phần chứa môn này không. **Không trả mã môn ra client.**
+
+**Response 200**
+```json
+{ "allowed": true }
+```
+
+**Lỗi:** `401` (chưa đăng nhập / hết hạn wstoken), `400` (token `course` sai).
+
+---
+
+## 9. Đánh giá bài giảng (`/reviews`)
+
+Sinh viên chấm **sao (1–5)** + **bình luận** cho 1 bài giảng. Mỗi SV chỉ đánh giá **1 lần / bài giảng** (sửa để cập nhật). MSSV luôn lấy từ wstoken, **không nhận từ client**.
+
+### 9.1. Thống kê đánh giá (công khai)
+
+```
+GET /api/reviews/:lectureId
+```
+
+Trả **thống kê tổng hợp**, **không** trả đánh giá của từng SV (không lộ MSSV/bình luận người khác).
+
+**Response 200**
+```json
+{
+  "lectureId": 6,
+  "total": 2,
+  "average": 4.5,
+  "distribution": { "1": 0, "2": 0, "3": 0, "4": 1, "5": 1 }
+}
+```
+
+| Trường | Kiểu | Ý nghĩa |
+|--------|------|---------|
+| `total` | number | Tổng số lượt đánh giá |
+| `average` | number | Điểm trung bình (0 nếu chưa có) |
+| `distribution` | object | Số lượt theo từng mức sao 1–5 |
+
+### 9.2. Đánh giá của chính SV
+
+```
+GET /api/reviews/:lectureId/mine
+Authorization: Bearer <wstoken>
+```
+
+Lấy đánh giá của chính SV (để FE prefill form), `null` nếu chưa có.
+
+**Response 200**
+```json
+{
+  "lectureId": 6,
+  "review": {
+    "id": 10,
+    "lectureId": 6,
+    "studentId": "21001234",
+    "stars": 5,
+    "comment": "Bài giảng hay quá Thầy ạ",
+    "createdAt": "2026-06-10T01:21:54.000Z"
+  }
+}
+```
+> `review` = `null` nếu SV chưa đánh giá bài giảng này.
+
+### 9.3. Tạo đánh giá
+
+```
+POST /api/reviews/:lectureId
+Authorization: Bearer <wstoken>
+Content-Type: application/json
+```
+
+**Body**
+```json
+{ "stars": 5, "comment": "Bài giảng hay quá Thầy ạ" }
+```
+
+| Field | Bắt buộc | Ràng buộc |
+|-------|----------|-----------|
+| `stars` | ✅ | Số nguyên 1–5 |
+| `comment` | ❌ | Tối đa 255 ký tự |
+
+**Response 201**
+```json
+{
+  "message": "Đánh giá thành công",
+  "review": { "id": 10, "lectureId": 6, "studentId": "21001234", "stars": 5, "comment": "...", "createdAt": "..." }
+}
+```
+
+### 9.4. Sửa đánh giá
+
+```
+PUT /api/reviews/:lectureId
+Authorization: Bearer <wstoken>
+Content-Type: application/json
+```
+
+**Body** (chỉ gửi trường cần đổi)
+```json
+{ "stars": 4, "comment": "Cập nhật cảm nhận" }
+```
+
+**Response 200**
+```json
+{ "message": "Cập nhật đánh giá thành công", "review": { "id": 10, "stars": 4, "comment": "...", "createdAt": "..." } }
+```
+
+### Bảng lỗi (mục 9)
+
+| Tình huống | HTTP | Body (ví dụ) |
+|-----------|------|--------------|
+| Chưa đăng nhập / hết hạn wstoken | `401` | `{ "message": "Chưa đăng nhập" }` |
+| `stars` ngoài 1–5 | `400` | `{ "message": "Số sao phải từ 1 đến 5" }` |
+| SV không thuộc môn của bài giảng | `403` | `{ "message": "Bạn không thuộc môn học (...) của bài giảng này" }` |
+| Đã đánh giá rồi (khi POST) | `409` | `{ "message": "Bạn đã đánh giá bài giảng này rồi (dùng sửa để cập nhật)" }` |
+| Chưa đánh giá (khi PUT) | `404` | `{ "message": "Bạn chưa đánh giá bài giảng này" }` |
+
+---
+
 ## Luồng sử dụng
 
 **Giảng viên (quản lý bài giảng):**
-1. `GET /api/monhoc` → chọn môn + phiên bản
-2. `GET /api/baigiang/chi-tiet?monHocVersionId=` → danh sách chương
-3. (nếu chương chưa có) `POST /api/baigiang/chi-tiet/:chiTietId/ensure` → lấy `baiGiangId`
-4. `POST /api/baigiang/:id/upload-video` → tải video lên
+1. `GET /api/subjects` → chọn môn + phiên bản
+2. `GET /api/lectures/chapters?subjectVersionId=` → danh sách chương
+3. (nếu chương chưa có) `POST /api/lectures/chapters/:chapterId/ensure` → lấy `baiGiangId`
+4. `POST /api/lectures/:id/video` → tải video lên
 
-**Sinh viên (xem bài giảng):**
-1. `GET /api/baigiang/danh-sach?maMon=&version=` → danh sách video
-2. `GET /api/baigiang/:id/playback-token` → xin token
-3. Phát `url` trả về (mục 7) bằng hls.js
+**Sinh viên (xem bài giảng + đánh giá):**
+1. `POST /api/lectures/token` (`{courseCode, version}`) → lấy **token mờ**
+2. `GET /api/student-courses/access?course=<token>` → kiểm tra quyền học
+3. `GET /api/lectures?course=<token>` → danh sách video
+4. `GET /api/lectures/:id/playback-token` → xin token phát, rồi phát `url` (mục 7) bằng hls.js
+5. `GET /api/reviews/:lectureId` (điểm TB) + `GET /api/reviews/:lectureId/mine` (đánh giá của mình)
+6. `POST` / `PUT /api/reviews/:lectureId` → gửi/sửa đánh giá
 
 ---
 
@@ -360,11 +560,14 @@ MINIO_ENDPOINT=http://localhost:9000
 MINIO_BUCKET=baigiang
 MINIO_ACCESS_KEY=...
 MINIO_SECRET_KEY=...
-FFMPEG_PATH=            # trống = dùng ffmpeg-static
-HLS_SEGMENT_TIME=6      # độ dài mỗi .ts (giây)
-MAX_VIDEO_MB=2048       # dung lượng video tối đa
-HLS_TOKEN_TTL=6h        # thời hạn token xem video
-JWT_SECRET=...          # ký token phát video
-UPLOAD_API_KEY=...      # khóa bảo vệ endpoint upload (header x-api-key)
+FFMPEG_PATH=               # trống = dùng ffmpeg-static
+HLS_SEGMENT_TIME=6         # độ dài mỗi .ts (giây)
+MAX_VIDEO_MB=2048          # dung lượng video tối đa
+HLS_TOKEN_TTL=6h           # thời hạn token xem video
+JWT_SECRET=...             # ký token phát video; fallback khóa course token
+COURSE_TOKEN_SECRET=...    # khóa mã hóa course token (ẩn mã môn); trống = dùng JWT_SECRET
+UPLOAD_API_KEY=...         # khóa bảo vệ endpoint upload (header x-api-key)
 ```
 > FE phải gửi đúng `UPLOAD_API_KEY` này qua header `x-api-key` khi upload. Bên FE (Vite) đọc từ biến build `VITE_UPLOAD_API_KEY` — đặt cùng giá trị với backend.
+>
+> **Lưu ý:** đổi `COURSE_TOKEN_SECRET` (hoặc `JWT_SECRET` nếu đang fallback) sẽ làm **mọi course token cũ hết hiệu lực** (URL `/bai-giang-dien-tu/<token>` đã chia sẻ trước đó không mở được nữa).

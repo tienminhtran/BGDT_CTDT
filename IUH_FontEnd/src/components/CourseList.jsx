@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { GraduationCap, ExternalLink } from 'lucide-react'
-import { courseService } from '../services'
-import { STORAGE_KEYS, buildLmsCourseUrl, buildCoursePlayerPath } from '../constants'
+import { courseService, baiGiangService } from '../services'
+import { STORAGE_KEYS, buildLmsCourseUrl } from '../constants'
 
 function ProgressBar({ value }) {
   const pct = Math.round(value ?? 0)
@@ -24,20 +24,31 @@ export default function CourseList() {
   const [state, setState] = useState({ loading: true, courses: [], error: '' })
   const [path, setPath] = useState('')
 
-  // Nhập "mã môn/phiên bản" (vd 2101420/1) hoặc dán cả URL -> Enter để vào học.
+  // Nhập "mã môn/phiên bản" (vd 2101420/1) hoặc dán cả URL (đã mã hóa) -> Enter để vào học.
   // Quyền truy cập được kiểm tra ở trang bài giảng (theo mã môn).
-  const goToLesson = (e) => {
+  const goToLesson = async (e) => {
     e.preventDefault()
-    let v = path.trim()
+    const v = path.trim()
     if (!v) return
 
-    // Nếu người dùng dán nguyên URL: lấy phần sau 'bai-giang-dien-tu/'
+    // Nếu dán nguyên URL: phần sau 'bai-giang-dien-tu/' đã là token mờ -> đi thẳng
     const marker = 'bai-giang-dien-tu/'
     const idx = v.indexOf(marker)
-    if (idx !== -1) v = v.slice(idx + marker.length)
+    if (idx !== -1) {
+      const token = v.slice(idx + marker.length).replace(/^\/+/, '').replace(/\/+$/, '')
+      if (token) navigate(`/bai-giang-dien-tu/${token}`)
+      return
+    }
 
-    v = v.replace(/^\/+/, '').replace(/\/+$/, '') // bỏ dấu / thừa
-    if (v) navigate(buildCoursePlayerPath(v))
+    // Gõ tay "mã môn/phiên bản" -> xin token mờ từ backend rồi điều hướng
+    const [courseCode, version] = v.replace(/^\/+/, '').replace(/\/+$/, '').split('/')
+    if (!courseCode) return
+    try {
+      const token = await baiGiangService.createCourseToken(courseCode, version || null)
+      navigate(`/bai-giang-dien-tu/${token}`)
+    } catch {
+      // Lỗi mạng/token -> bỏ qua, người dùng thử lại
+    }
   }
 
   useEffect(() => {
@@ -84,16 +95,17 @@ export default function CourseList() {
         Môn học của bạn ({state.courses.length})
       </h2>
 
-      {/* Ô nhập đường dẫn vào học: gõ mã môn/phiên bản rồi Enter */}
-      Học máy:http://localhost:5173/bai-giang-dien-tu/2102470/1  <br />
-      Học phần khác: http://localhost:5173/bai-giang-dien-tu/2101420/1  <br />
-       <br />
+      {/* Ô nhập đường dẫn vào học: gõ "mã môn/phiên bản" (vd 2101420/1) rồi Enter */}
+      <p className="mb-3 text-sm text-slate-500">
+        Nhập <span className="font-medium">mã Giảng viên cung cấp tại LMS của khóa học đó</span>
+        2101420/1
+      </p>
       <form onSubmit={goToLesson} className="mb-6 flex gap-2">
         <input
           type="text"
           value={path}
           onChange={(e) => setPath(e.target.value)}
-          placeholder="Nhập đường dẫn vào học, vd: 2101420/1  (mã môn / phiên bản)"
+          placeholder="Nhập đường dẫn hoặc mã bài giảng"
           className="flex-1 rounded-sm border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#115EA8]"
         />
         <button

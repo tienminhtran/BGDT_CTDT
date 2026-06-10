@@ -3,7 +3,7 @@ const controller = require('../controllers/monHoc.controller');
 
 const router = express.Router();
 
-// GET /api/monhoc
+// GET /api/subjects
 router.get('/', controller.list);
 
 module.exports = router;

@@ -50,18 +50,9 @@ export default function App() {
         }
       />
 
-      {/* Trang xem bài giảng: /bai-giang-dien-tu/<mã môn>/<phiên bản> */}
+      {/* Trang xem bài giảng: /bai-giang-dien-tu/<token mã hóa mã môn/phiên bản> */}
       <Route
         path={ROUTES.coursePlayer}
-        element={
-          <ProtectedRoute>
-            <CoursePlayerPage />
-          </ProtectedRoute>
-        }
-      />
-      {/* Không có phiên bản -> mặc định */}
-      <Route
-        path={ROUTES.coursePlayerNoVersion}
         element={
           <ProtectedRoute>
             <CoursePlayerPage />

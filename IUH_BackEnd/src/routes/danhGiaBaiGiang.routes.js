@@ -3,16 +3,16 @@ const controller = require('../controllers/danhGiaBaiGiang.controller');
 
 const router = express.Router();
 
-// GET /api/danhgia/:baiGiangId?page=&pageSize=  -> danh sách bình luận + sao + thống kê
-router.get('/:baiGiangId', controller.danhSach);
+// GET /api/reviews/:lectureId  -> thống kê đánh giá tổng hợp (không trả đánh giá từng SV)
+router.get('/:lectureId', controller.danhSach);
 
-// GET /api/danhgia/:baiGiangId/sinh-vien  (Bearer wstoken) -> đánh giá của chính SV đang đăng nhập
-router.get('/:baiGiangId/sinh-vien', controller.cuaToi);
+// GET /api/reviews/:lectureId/mine  (Bearer wstoken) -> đánh giá của chính SV đang đăng nhập
+router.get('/:lectureId/mine', controller.cuaToi);
 
-// POST /api/danhgia/:baiGiangId  (Bearer wstoken)  body: { soSao, binhLuan }
-router.post('/:baiGiangId', controller.tao);
+// POST /api/reviews/:lectureId  (Bearer wstoken)  body: { stars, comment }
+router.post('/:lectureId', controller.tao);
 
-// PUT /api/danhgia/:baiGiangId  (Bearer wstoken)  body: { soSao?, binhLuan? }
-router.put('/:baiGiangId', controller.sua);
+// PUT /api/reviews/:lectureId  (Bearer wstoken)  body: { stars?, comment? }
+router.put('/:lectureId', controller.sua);
 
 module.exports = router;
