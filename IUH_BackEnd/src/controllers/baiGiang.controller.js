@@ -51,19 +51,27 @@ exports.uploadVideo = async (req, res, next) => {
 
 exports.uploadMiddleware = uploadMiddleware;
 
-// GET /api/lectures/:id/playback-token  (Bearer wstoken)
-// Phải đăng nhập LMS -> cấp token ký ngắn hạn để xem HLS của bài giảng này.
+// GET /api/lectures/:id/playback-token
+// - Sinh viên: gửi Bearer wstoken (đăng nhập LMS).
+// - Giảng viên (app port 5999): gửi header x-teacher-key = KEY_LOGIN_TEACHER, không cần đăng nhập.
+// Cấp token ký ngắn hạn để xem HLS của bài giảng này.
 exports.playbackToken = async (req, res, next) => {
   try {
-    const header = req.headers.authorization || '';
-    const wstoken = header.startsWith('Bearer ') ? header.slice(7) : null;
-    if (!wstoken) return res.status(401).json({ message: 'Chưa đăng nhập' });
-
-    await moodle.getSiteInfo(wstoken); // ném 401 nếu token LMS hết hạn
-
     const id = parseInt(req.params.id, 10);
     if (!Number.isInteger(id)) {
       return res.status(400).json({ message: 'Id bài giảng không hợp lệ' });
+    }
+
+    // App giảng viên: chỉ cần key hợp lệ, bỏ qua đăng nhập LMS.
+    const teacherKey = req.headers['x-teacher-key'];
+    const isTeacher =
+      !!process.env.KEY_LOGIN_TEACHER && teacherKey === process.env.KEY_LOGIN_TEACHER;
+
+    if (!isTeacher) {
+      const header = req.headers.authorization || '';
+      const wstoken = header.startsWith('Bearer ') ? header.slice(7) : null;
+      if (!wstoken) return res.status(401).json({ message: 'Chưa đăng nhập' });
+      await moodle.getSiteInfo(wstoken); // ném 401 nếu token LMS hết hạn
     }
 
     const token = jwt.sign({ bg: id }, process.env.JWT_SECRET, {

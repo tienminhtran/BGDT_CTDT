@@ -3,7 +3,6 @@
 export const ROUTES = {
   home: '/',
   dashboard: '/trang-chu',
-  quanLyBaiGiang: '/quan-ly-bai-giang',
   // Token mờ (AES) do backend cấp, không lộ mã môn/phiên bản -> 1 tham số :token
   coursePlayer: '/bai-giang-dien-tu/:token',
 }

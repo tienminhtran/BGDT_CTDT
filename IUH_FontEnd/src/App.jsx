@@ -3,12 +3,7 @@ import { Loader2 } from 'lucide-react'
 import { useAuth } from './contexts/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import { ROUTES } from './constants'
-import {
-  HomePage,
-  DashboardPage,
-  QuanLyBaiGiangPage,
-  CoursePlayerPage,
-} from './pages'
+import { HomePage, DashboardPage, CoursePlayerPage } from './pages'
 
 export default function App() {
   const { user, checking } = useAuth()
@@ -36,16 +31,6 @@ export default function App() {
         element={
           <ProtectedRoute>
             <DashboardPage />
-          </ProtectedRoute>
-        }
-      />
-
-      {/* Trang quản lý bài giảng (chọn môn/phiên bản, upload video) */}
-      <Route
-        path={ROUTES.quanLyBaiGiang}
-        element={
-          <ProtectedRoute>
-            <QuanLyBaiGiangPage />
           </ProtectedRoute>
         }
       />

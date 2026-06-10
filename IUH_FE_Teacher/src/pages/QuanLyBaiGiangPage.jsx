@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   BookOpen,
   Layers,
@@ -7,14 +8,15 @@ import {
   CheckCircle2,
   PlayCircle,
   AlertTriangle,
+  ExternalLink,
 } from 'lucide-react'
 import Layout from '../components/Layout'
 import HlsPlayer from '../components/HlsPlayer'
-import { useAuth } from '../contexts/AuthContext'
 import { monHocService, baiGiangService } from '../services'
+import { buildCoursePlayerPath } from '../constants'
 
 export default function QuanLyBaiGiangPage() {
-  const { user, logout } = useAuth()
+  const navigate = useNavigate()
 
   const [monHoc, setMonHoc] = useState([])
   const [loadingMon, setLoadingMon] = useState(true)
@@ -25,6 +27,11 @@ export default function QuanLyBaiGiangPage() {
 
   const [chiTiet, setChiTiet] = useState([])
   const [loadingChiTiet, setLoadingChiTiet] = useState(false)
+
+  const [openingPlayer, setOpeningPlayer] = useState(false)
+
+  // Ô nhập nhanh "mã môn / phiên bản" -> vào thẳng trang xem video
+  const [quickPath, setQuickPath] = useState('')
 
   // 1) Lấy danh sách môn học + phiên bản
   useEffect(() => {
@@ -78,8 +85,41 @@ export default function QuanLyBaiGiangPage() {
       rows.map((r) => (r.chiTietId === chiTietId ? { ...r, ...patch } : r))
     )
 
+  // Chuyển sang trang xem video theo mã môn + phiên bản.
+  // Backend chỉ kiểm tra KEY_LOGIN_TEACHER (gửi sẵn ở header x-teacher-key), không cần đăng nhập.
+  const moTrangVideo = async (maMon, version) => {
+    if (!maMon) return
+    setOpeningPlayer(true)
+    setError('')
+    try {
+      const token = await baiGiangService.createCourseToken(maMon, version ?? null)
+      navigate(buildCoursePlayerPath(token))
+    } catch (e) {
+      setError(e?.response?.data?.message || 'Không mở được trang xem bài giảng')
+    } finally {
+      setOpeningPlayer(false)
+    }
+  }
+
+  // Mở trang xem cho môn + phiên bản đang chọn ở bộ lọc.
+  const moTrangXem = () => {
+    if (!monDangChon || !versionId) return
+    const ver = versions.find((v) => String(v.id) === String(versionId))
+    moTrangVideo(monDangChon.maTuQuan, ver?.version || null)
+  }
+
+  // Gõ "mã môn/phiên bản" (vd: AV2/v2) -> vào thẳng trang xem video.
+  const xemNhanh = (e) => {
+    e.preventDefault()
+    const v = quickPath.trim().replace(/^\/+/, '').replace(/\/+$/, '')
+    if (!v) return
+    const [maMon, version] = v.split('/')
+    if (!maMon) return
+    moTrangVideo(maMon.trim(), version ? version.trim() : null)
+  }
+
   return (
-    <Layout user={user} onLogout={logout}>
+    <Layout>
       <main className="w-full px-6 py-6">
         <h1 className="flex items-center gap-2 text-xl font-semibold text-[#115EA8]">
           <BookOpen size={22} /> Quản lý bài giảng
@@ -133,11 +173,56 @@ export default function QuanLyBaiGiangPage() {
           </label>
         </div>
 
+        {/* Nhập nhanh "mã môn / phiên bản" -> vào thẳng trang xem video */}
+        <form onSubmit={xemNhanh} className="mt-4">
+          <span className="mb-1 block text-sm font-medium text-slate-700">
+            Xem nhanh video theo mã môn / phiên bản
+          </span>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={quickPath}
+              onChange={(e) => setQuickPath(e.target.value)}
+              placeholder="Ví dụ: AV2/v2"
+              className="min-w-0 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#115EA8] sm:max-w-md"
+            />
+            <button
+              type="submit"
+              disabled={openingPlayer || !quickPath.trim()}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-[#115EA8] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0d4a82] disabled:opacity-60"
+            >
+              {openingPlayer ? (
+                <Loader2 className="animate-spin" size={16} />
+              ) : (
+                <PlayCircle size={16} />
+              )}
+              Xem video
+            </button>
+          </div>
+        </form>
+
         {/* Danh sách chương + upload */}
         <div className="mt-8">
-          <h2 className="mb-3 flex items-center gap-2 font-semibold text-slate-800">
-            <Layers size={18} /> Chương / Bài giảng
-          </h2>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 font-semibold text-slate-800">
+              <Layers size={18} /> Chương / Bài giảng
+            </h2>
+            {versionId ? (
+              <button
+                type="button"
+                onClick={moTrangXem}
+                disabled={openingPlayer}
+                className="inline-flex items-center gap-1.5 rounded-md border border-[#115EA8] px-3 py-1.5 text-sm font-medium text-[#115EA8] transition hover:bg-[#115EA8] hover:text-white disabled:opacity-60"
+              >
+                {openingPlayer ? (
+                  <Loader2 className="animate-spin" size={16} />
+                ) : (
+                  <ExternalLink size={16} />
+                )}
+                Mở trang xem bài giảng
+              </button>
+            ) : null}
+          </div>
 
           {loadingChiTiet ? (
             <p className="flex items-center gap-2 text-slate-500">
