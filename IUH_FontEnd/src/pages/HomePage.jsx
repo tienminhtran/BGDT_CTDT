@@ -164,7 +164,9 @@ function LoginForm({ login }) {
         Đăng nhập hệ thống
       </h2>
       <p className="mt-1 text-center text-sm text-slate-500">
-        Sử dụng tài khoản do nhà trường cấp
+        Sử dụng tài khoản <a href="https://lms.iuh.edu.vn" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+          LMS
+        </a>
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-3">
