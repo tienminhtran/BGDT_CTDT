@@ -188,7 +188,7 @@ function DanhGiaSection({ baiGiangId, dg }) {
               ) : (
                 <Send size={16} />
               )}
-              {myRating ? 'Cập nhật' : 'Gửi đánh giá'}
+              Gửi đánh giá
             </button>
           </div>
         </div>
@@ -333,9 +333,15 @@ export default function CoursePlayerPage() {
           <div className="min-w-0">
             {/* Khung video 16:9 cố định, giới hạn chiều cao để không phình quá to */}
             <div className="mx-auto w-full max-w-[1100px]">
-              <div className="aspect-video w-full overflow-hidden rounded-xl bg-black shadow-sm">
+              <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black shadow-sm">
                 {playSrc ? (
-                  <HlsPlayer key={active.baiGiangId} src={playSrc} className="h-full w-full" />
+                  <HlsPlayer
+                    key={active.baiGiangId}
+                    src={playSrc}
+                    className="h-full w-full"
+                    watermark="Đây là bài giảng điện tử thuộc bản quyền Đại học Công nghiệp Thành Phố Hồ Chí Minh"
+                    mssv={user?.username}
+                  />
                 ) : (
                   <div className="flex h-full w-full flex-col items-center justify-center text-white/80">
                     <PlayCircle size={64} className="opacity-90" />
