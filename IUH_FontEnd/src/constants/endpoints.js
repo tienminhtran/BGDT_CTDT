@@ -18,4 +18,9 @@ export const ENDPOINTS = {
     import: '/sinhvien-hocphan/import',
     kiemTra: (maMon) => `/sinhvien-hocphan/kiem-tra/${encodeURIComponent(maMon)}`,
   },
+  danhGia: {
+    // Dùng chung cho GET danh sách, POST tạo, PUT sửa
+    baiGiang: (baiGiangId) => `/danhgia/${baiGiangId}`,
+    cuaToi: (baiGiangId) => `/danhgia/${baiGiangId}/sinh-vien`,
+  },
 }

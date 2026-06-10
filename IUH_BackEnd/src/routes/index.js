@@ -22,6 +22,10 @@ router.use('/monhoc', monHocRoutes);
 const baiGiangRoutes = require('./baiGiang.routes');
 router.use('/baigiang', baiGiangRoutes);
 
+// Đánh giá / bình luận bài giảng (SV chấm sao + bình luận)
+const danhGiaRoutes = require('./danhGiaBaiGiang.routes');
+router.use('/danhgia', danhGiaRoutes);
+
 const exampleRoutes = require('./example.routes');
 router.use('/examples', exampleRoutes);
 
