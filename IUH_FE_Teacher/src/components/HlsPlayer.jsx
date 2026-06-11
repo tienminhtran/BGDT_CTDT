@@ -17,6 +17,7 @@ export default function HlsPlayer({
   watermark,
   mssv,
   allowFullscreen = true,
+  autoPlay = false,
 }) {
   const videoRef = useRef(null)
   const containerRef = useRef(null)
@@ -64,11 +65,20 @@ export default function HlsPlayer({
     const video = videoRef.current
     if (!video || !src) return
 
+    // Tự phát yêu cầu video muted (chính sách trình duyệt). Gọi play() khi sẵn sàng.
+    const tryAutoPlay = () => {
+      if (!autoPlay) return
+      video.muted = true
+      const p = video.play()
+      if (p && typeof p.catch === 'function') p.catch(() => {})
+    }
+
     let hls
     let nativeTimer
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
       // Safari hỗ trợ HLS sẵn (không có sự kiện FRAG_LOADED) -> đổi vị trí theo nhịp
       video.src = src
+      if (autoPlay) video.addEventListener('loadedmetadata', tryAutoPlay, { once: true })
       if (mssv) nativeTimer = setInterval(moveWatermark, 8000)
     } else if (Hls.isSupported()) {
       hls = new Hls({
@@ -85,6 +95,8 @@ export default function HlsPlayer({
       })
       hls.loadSource(src)
       hls.attachMedia(video)
+      // Khi đã phân tích xong manifest -> bắt đầu tự phát (nếu bật)
+      if (autoPlay) hls.on(Hls.Events.MANIFEST_PARSED, tryAutoPlay)
       // Mỗi khi tải xong 1 segment -> nhảy lớp phủ MSSV sang vị trí mới
       if (mssv) hls.on(Hls.Events.FRAG_LOADED, moveWatermark)
     } else {
@@ -94,8 +106,9 @@ export default function HlsPlayer({
     return () => {
       if (hls) hls.destroy()
       if (nativeTimer) clearInterval(nativeTimer)
+      video.removeEventListener('loadedmetadata', tryAutoPlay)
     }
-  }, [src, mssv])
+  }, [src, mssv, autoPlay])
 
   // Tua tương đối (giây), kẹp trong [0, duration]
   const seekBy = (delta) => {
@@ -115,6 +128,9 @@ export default function HlsPlayer({
         className="h-full w-full object-contain"
         poster={poster}
         controls
+        autoPlay={autoPlay}
+        muted={autoPlay}
+        playsInline
         controlsList="nodownload noplaybackrate noremoteplayback nofullscreen"
         disablePictureInPicture
         onContextMenu={(e) => e.preventDefault()}

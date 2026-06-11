@@ -41,6 +41,7 @@ export default function VideoTheoIdPage() {
           className="h-full w-full"
           watermark="Đây là bài giảng điện tử thuộc bản quyền Đại học Công nghiệp Thành Phố Hồ Chí Minh"
           allowFullscreen={false}
+          autoPlay
         />
       ) : (
         <div className="flex h-full w-full flex-col items-center justify-center text-white/80">
