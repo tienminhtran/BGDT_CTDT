@@ -69,7 +69,7 @@ services:
         VITE_API_BASE_URL: /api
         VITE_LMS_BASE_URL: ${VITE_LMS_BASE_URL:-https://lms.iuh.edu.vn}
         VITE_UPLOAD_API_KEY: ${UPLOAD_API_KEY}
-        VITE_TEACHER_KEY: ${VITE_TEACHER_KEY}
+        VITE_TEACHER_KEY: ${KEY_LOGIN_TEACHER}
     container_name: iuh_teacher
     restart: unless-stopped
     depends_on:
