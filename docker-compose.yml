@@ -61,5 +61,21 @@ services:
     ports:
       - "${FRONTEND_PORT:-80}:80"
 
+  # ---------- Teacher Frontend (Vite/React + nginx) ----------
+  teacher:
+    build:
+      context: ./IUH_FE_Teacher
+      args:
+        VITE_API_BASE_URL: /api
+        VITE_LMS_BASE_URL: ${VITE_LMS_BASE_URL:-https://lms.iuh.edu.vn}
+        VITE_UPLOAD_API_KEY: ${UPLOAD_API_KEY}
+        VITE_TEACHER_KEY: ${VITE_TEACHER_KEY}
+    container_name: iuh_teacher
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${TEACHER_PORT:-8080}:80"
+
 volumes:
   minio_data:
