@@ -272,6 +272,50 @@ async function listVideos(maMon, version) {
 }
 
 /**
+ * Lấy thông tin 1 bài giảng theo Id (tb_BaiGiang) để xem riêng lẻ.
+ * Trả về metadata để hiển thị + cờ video/HLS. KHÔNG trả URL MinIO ra client.
+ * @param {number} idBaiGiang
+ * @returns {Promise<{ baiGiangId, chiTietId, tenBaiGiang, noiDungChuong, subjectName, version, coVideo, coHls }>}
+ */
+async function getBaiGiangById(idBaiGiang) {
+  const pool = await getPool();
+  const result = await pool
+    .request()
+    .input('id', sql.Int, idBaiGiang)
+    .query(`
+      SELECT bg.Id AS baiGiangId, ct.Id AS chiTietId,
+             bg.TenBaiGiang AS tenBaiGiang,
+             ct.NoiDungChuong AS noiDungChuong,
+             mh.tenmon AS subjectName,
+             mv.[version] AS version,
+             bg.LinkBaiGiang, bg.LinkChunkBaiGiang
+      FROM ${TABLE} bg
+      INNER JOIN tb_ChiTietDangKyBaiGiang ct ON bg.ChiTietDangKyBaiGiangId = ct.Id
+      INNER JOIN tb_DangKyBaiGiang dk        ON ct.DangKyBaiGiangId = dk.Id
+      INNER JOIN tb_monhoc_version mv         ON dk.MonHocVersionId = mv.id
+      INNER JOIN tb_monhoc mh                 ON mv.id_monhoc = mh.id
+      WHERE bg.Id = @id
+    `);
+
+  const r = result.recordset[0];
+  if (!r) {
+    const err = new Error('Không tìm thấy bài giảng');
+    err.status = 404;
+    throw err;
+  }
+  return {
+    baiGiangId: r.baiGiangId,
+    chiTietId: r.chiTietId,
+    tenBaiGiang: r.tenBaiGiang,
+    noiDungChuong: r.noiDungChuong,
+    subjectName: r.subjectName,
+    version: r.version,
+    coVideo: !!r.LinkBaiGiang,
+    coHls: !!r.LinkChunkBaiGiang,
+  };
+}
+
+/**
  * Lấy Id bài giảng của 1 chi tiết đăng ký; nếu chưa có thì tạo mới (1-1).
  * Dùng trước khi upload video cho chương chưa có bài giảng.
  */
@@ -382,6 +426,7 @@ module.exports = {
   uploadVideoBaiGiang,
   listVideos,
   listChiTietByVersion,
+  getBaiGiangById,
   getOrCreateBaiGiang,
   streamHls,
 };

@@ -47,3 +47,10 @@ export const getPlaybackToken = async (lectureId) => {
   const { data } = await http.get(ENDPOINTS.lectures.playbackToken(lectureId))
   return data.url
 }
+
+// Giảng viên xem 1 video riêng lẻ chỉ bằng id (tb_BaiGiang).
+// Trả về metadata + { token, url } để phát HLS (url null nếu chưa có HLS).
+export const getVideoTheoId = async (lectureId) => {
+  const { data } = await http.get(ENDPOINTS.lectures.teacher(lectureId))
+  return data
+}

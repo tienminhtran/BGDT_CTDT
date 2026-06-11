@@ -160,6 +160,43 @@ const data = await uploadVideo(id, file)
 
 ---
 
+### 5) Xem nhanh 1 video theo mã bài giảng
+
+> 🔑 **Cần header `x-teacher-key: <KEY_LOGIN_TEACHER>`** (app gắn sẵn). Sai/thiếu → `401`.
+
+Xem 1 video riêng lẻ **chỉ bằng `id` (tb_BaiGiang)** — KHÔNG cần mã môn/phiên bản hay token khóa học.
+Trả về metadata + token/url phát HLS trong **1 lần gọi**.
+
+- **Method:** `GET`
+- **URL:** `/api/lectures/:baiGiangId/teacher`
+- **Headers:** `x-teacher-key: <KEY_LOGIN_TEACHER>`
+- **Response:**
+
+```json
+{
+  "baiGiangId": 1002,
+  "chiTietId": 55,
+  "tenBaiGiang": "Bài 1",
+  "noiDungChuong": "Chương 1: Tổng quan",
+  "subjectName": "Công nghệ phần mềm",
+  "version": "1",
+  "coVideo": true,
+  "coHls": true,
+  "token": "<jwt>",
+  "url": "/api/lectures/1002/hls/index.m3u8?token=<jwt>"
+}
+```
+
+| Trường | Mô tả |
+|---|---|
+| `coHls` | Chỉ phát được khi `true` |
+| `token` / `url` | `null` nếu chưa có HLS; ngược lại dùng `url` cho trình phát |
+
+- **Frontend:** `baiGiangService.getVideoTheoId(baiGiangId)`
+- **Trang:** `/video/:id` (vd `/video/1002`) — ô "Xem nhanh video theo mã bài giảng".
+
+---
+
 ## Lưu ý
 
 - Backend lưu video lên **MinIO** theo cấu trúc `maTuQuan/version/chiTietId/{stream,chunk}`,

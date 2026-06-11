@@ -84,6 +84,38 @@ exports.playbackToken = async (req, res, next) => {
   }
 };
 
+// GET /api/lectures/:id/teacher  (Header: x-teacher-key = KEY_LOGIN_TEACHER)
+// Giảng viên xem 1 video riêng lẻ CHỈ BẰNG id (tb_BaiGiang) — không cần token khóa học.
+// Trả metadata + token/url phát HLS trong 1 lần gọi.
+exports.getBaiGiangTeacher = async (req, res, next) => {
+  try {
+    const teacherKey = req.headers['x-teacher-key'];
+    if (!process.env.KEY_LOGIN_TEACHER || teacherKey !== process.env.KEY_LOGIN_TEACHER) {
+      return res.status(401).json({ message: 'Key giảng viên không hợp lệ' });
+    }
+
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ message: 'Id bài giảng không hợp lệ' });
+    }
+
+    const info = await baiGiang.getBaiGiangById(id); // ném 404 nếu không có
+
+    // Chỉ cấp token/url phát khi đã có bản HLS.
+    let token = null;
+    let url = null;
+    if (info.coHls) {
+      token = jwt.sign({ bg: id }, process.env.JWT_SECRET, { expiresIn: HLS_TOKEN_TTL });
+      url = `/api/lectures/${id}/hls/index.m3u8?token=${token}`;
+    }
+
+    res.json({ ...info, token, url });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ message: err.message });
+    next(err);
+  }
+};
+
 // GET /api/lectures/:id/hls/:file?token=<signed>
 // Stream HLS qua backend (bucket private). Xác thực bằng token ký, không gọi LMS mỗi segment.
 exports.streamHls = async (req, res, next) => {

@@ -13,7 +13,7 @@ import {
 import Layout from '../components/Layout'
 import HlsPlayer from '../components/HlsPlayer'
 import { monHocService, baiGiangService } from '../services'
-import { buildCoursePlayerPath } from '../constants'
+import { buildCoursePlayerPath, buildVideoTheoIdPath } from '../constants'
 
 export default function QuanLyBaiGiangPage() {
   const navigate = useNavigate()
@@ -32,6 +32,8 @@ export default function QuanLyBaiGiangPage() {
 
   // Ô nhập nhanh "mã môn / phiên bản" -> vào thẳng trang xem video
   const [quickPath, setQuickPath] = useState('')
+  // Ô nhập nhanh "mã bài giảng" (tb_BaiGiang) -> xem 1 video riêng lẻ
+  const [quickId, setQuickId] = useState('')
 
   // 1) Lấy danh sách môn học + phiên bản
   useEffect(() => {
@@ -118,6 +120,14 @@ export default function QuanLyBaiGiangPage() {
     moTrangVideo(maMon.trim(), version ? version.trim() : null)
   }
 
+  // Gõ "mã bài giảng" (id tb_BaiGiang) -> xem 1 video riêng lẻ.
+  const xemTheoId = (e) => {
+    e.preventDefault()
+    const id = quickId.trim()
+    if (!id) return
+    navigate(buildVideoTheoIdPath(id))
+  }
+
   return (
     <Layout>
       <main className="w-full px-6 py-6">
@@ -196,6 +206,31 @@ export default function QuanLyBaiGiangPage() {
               ) : (
                 <PlayCircle size={16} />
               )}
+              Xem video
+            </button>
+          </div>
+        </form>
+
+        {/* Nhập nhanh "mã bài giảng" (id tb_BaiGiang) -> xem 1 video riêng lẻ */}
+        <form onSubmit={xemTheoId} className="mt-4">
+          <span className="mb-1 block text-sm font-medium text-slate-700">
+            Xem nhanh video theo mã bài giảng
+          </span>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              min="1"
+              value={quickId}
+              onChange={(e) => setQuickId(e.target.value)}
+              placeholder="Ví dụ: 1002"
+              className="min-w-0 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#115EA8] sm:max-w-md"
+            />
+            <button
+              type="submit"
+              disabled={!quickId.trim()}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-[#115EA8] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0d4a82] disabled:opacity-60"
+            >
+              <PlayCircle size={16} />
               Xem video
             </button>
           </div>

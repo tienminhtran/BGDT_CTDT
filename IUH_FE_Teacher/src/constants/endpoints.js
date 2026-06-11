@@ -9,6 +9,7 @@ export const ENDPOINTS = {
     ensureChapter: (chapterId) => `/lectures/chapters/${chapterId}/ensure`,
     video: (lectureId) => `/lectures/${lectureId}/video`,
     playbackToken: (lectureId) => `/lectures/${lectureId}/playback-token`,
+    teacher: (lectureId) => `/lectures/${lectureId}/teacher`, // xem 1 video theo id (giảng viên)
   },
   reviews: {
     byLecture: (lectureId) => `/reviews/${lectureId}`,
