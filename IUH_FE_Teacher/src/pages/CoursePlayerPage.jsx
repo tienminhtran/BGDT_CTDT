@@ -136,7 +136,7 @@ export default function CoursePlayerPage() {
           {/* ===== Cột video (trái) ===== */}
           <div className="min-w-0">
             <div className={`mx-auto w-full ${expanded ? '' : 'max-w-[1100px]'}`}>
-              <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black shadow-sm">
+              <div className="relative aspect-video w-full overflow-hidden bg-black shadow-sm">
                 {playSrc ? (
                   <HlsPlayer
                     key={active.baiGiangId}

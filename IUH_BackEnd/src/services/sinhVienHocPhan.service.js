@@ -1,7 +1,5 @@
-const { getPool, sql } = require('../config/db');
-const model = require('../models/sinhVienHocPhan.model');
-
-const TABLE = model.table;
+const { Op } = require('sequelize');
+const { SinhVienHocPhan, HocPhanMonHoc } = require('../models/orm');
 
 /**
  * Cắt bỏ 2 ký tự cuối của mã học phần.
@@ -17,12 +15,11 @@ function catHaiSoCuoi(ma) {
 
 // Lấy danh sách MaHocPhan (idnumber) của 1 sinh viên theo MSSV
 async function getHocPhanByMssv(mssv) {
-  const pool = await getPool();
-  const result = await pool
-    .request()
-    .input('MaSinhVien', sql.NVarChar(20), mssv)
-    .query(`SELECT MaHocPhan FROM ${TABLE} WHERE MaSinhVien = @MaSinhVien`);
-  return result.recordset.map((r) => r.MaHocPhan);
+  const rows = await SinhVienHocPhan.findAll({
+    attributes: ['MaHocPhan'],
+    where: { MaSinhVien: mssv },
+  });
+  return rows.map((r) => r.MaHocPhan);
 }
 
 // Import danh sách idnumber cho SV: chỉ thêm những học phần SV chưa có.
@@ -34,15 +31,10 @@ async function importHocPhan(mssv, idnumbers) {
   const existing = new Set(await getHocPhanByMssv(mssv));
   const toAdd = list.filter((x) => !existing.has(x));
 
-  const pool = await getPool();
-  for (const maHocPhan of toAdd) {
-    await pool
-      .request()
-      .input('MaSinhVien', sql.NVarChar(20), mssv)
-      .input('MaHocPhan', sql.NVarChar(20), maHocPhan)
-      .query(
-        `INSERT INTO ${TABLE} (MaSinhVien, MaHocPhan) VALUES (@MaSinhVien, @MaHocPhan)`
-      );
+  if (toAdd.length) {
+    await SinhVienHocPhan.bulkCreate(
+      toAdd.map((maHocPhan) => ({ MaSinhVien: mssv, MaHocPhan: maHocPhan }))
+    );
   }
 
   return { added: toAdd.length, skipped: list.length - toAdd.length, total: list.length };
@@ -61,21 +53,21 @@ async function importHocPhan(mssv, idnumbers) {
 async function kiemTraSinhVienHocMon(mssv, maMon) {
   if (!mssv || !maMon) return { allowed: false, maHocPhan: null };
 
-  const pool = await getPool();
-  const result = await pool
-    .request()
-    .input('MaSinhVien', sql.NVarChar(20), mssv)
-    .input('MaMon', sql.NVarChar(20), maMon)
-    .query(`
-      SELECT TOP 1 hpm.MaHocPhan
-      FROM tb_SinhVienHocPhan svhp
-      INNER JOIN tb_HocPhanMonHoc hpm
-        ON hpm.MaHocPhan = svhp.MaHocPhan
-      WHERE svhp.MaSinhVien = @MaSinhVien
-        AND hpm.MaMon = @MaMon
-    `);
+  const row = await SinhVienHocPhan.findOne({
+    attributes: ['MaHocPhan'],
+    where: { MaSinhVien: mssv },
+    include: [
+      {
+        model: HocPhanMonHoc,
+        as: 'MonHocList',
+        attributes: [],
+        required: true, // INNER JOIN: chỉ lấy khi học phần có đúng môn
+        where: { MaMon: maMon },
+      },
+    ],
+  });
 
-  const maHocPhan = result.recordset[0]?.MaHocPhan ?? null;
+  const maHocPhan = row?.MaHocPhan ?? null;
   return { allowed: maHocPhan != null, maHocPhan };
 }
 
@@ -90,19 +82,13 @@ async function getMonHocByHocPhan(maHocPhanList) {
   const list = [...new Set((maHocPhanList || []).map(catHaiSoCuoi).filter(Boolean))];
   if (!list.length) return {};
 
-  const pool = await getPool();
-  const request = pool.request();
-  const params = list.map((value, i) => {
-    request.input(`hp${i}`, sql.NVarChar(20), value);
-    return `@hp${i}`;
+  const rows = await HocPhanMonHoc.findAll({
+    attributes: ['MaHocPhan', 'MaMon'],
+    where: { MaHocPhan: { [Op.in]: list } },
   });
 
-  const result = await request.query(
-    `SELECT MaHocPhan, MaMon FROM tb_HocPhanMonHoc WHERE MaHocPhan IN (${params.join(',')})`
-  );
-
   const map = {};
-  for (const row of result.recordset) {
+  for (const row of rows) {
     (map[row.MaHocPhan] ??= []).push(row.MaMon);
   }
   return map;

@@ -182,3 +182,11 @@
     border-right-color: var(--border);
   }
 }
+
+
+.button {
+  cursor: pointer;
+}
+.a {
+  cursor: pointer;
+}

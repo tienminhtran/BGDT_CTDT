@@ -9,3 +9,13 @@ exports.list = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.listWithHashcode = async (req, res, next) => {
+  try {
+    const data = await monHoc.getMonHocListWithHashcode();
+    res.json({ monHoc: data });
+  } catch (err) {
+    next(err);
+  }
+};
+

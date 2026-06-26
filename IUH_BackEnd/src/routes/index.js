@@ -10,6 +10,7 @@ router.use('/auth', authRoutes);
 const courseRoutes = require('./course.routes');
 router.use('/courses', courseRoutes);
 
+
 // Sinh viên - Học phần (lưu/lấy idnumber theo MSSV)
 const svhpRoutes = require('./sinhVienHocPhan.routes');
 router.use('/student-courses', svhpRoutes);

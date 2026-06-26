@@ -2,3 +2,4 @@
 export { default as HomePage } from './HomePage'
 export { default as DashboardPage } from './DashboardPage'
 export { default as CoursePlayerPage } from './CoursePlayerPage'
+export { default as MyFeedback } from './MyFeedback'

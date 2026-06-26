@@ -1,34 +1,84 @@
-const { getPool } = require('../config/db');
-
+const { Monhoc, MonhocVersion,BaiGiang, ChiTietDangKyBaiGiang, DangKyBaiGiang} = require('../models/orm');
+const { encodeCourse } = require('../utils/courseToken');
 /**
  * Danh sách môn học kèm các phiên bản (version) của môn.
  * @returns {Promise<Array<{ id, maTuQuan, tenMon, versions: Array<{id, version}> }>>}
  */
 async function listMonHoc() {
-  const pool = await getPool();
-  const result = await pool.request().query(`
-    SELECT mh.id AS monHocId, mh.ma_tuquan AS maTuQuan, mh.tenmon AS tenMon,
-           mv.id AS versionId, mv.[version] AS version
-    FROM tb_monhoc mh
-    LEFT JOIN tb_monhoc_version mv ON mv.id_monhoc = mh.id
-    ORDER BY mh.tenmon, mv.[version]
-  `);
+  const rows = await Monhoc.findAll({
+    attributes: ['id', 'ma_tuquan', 'tenmon'],
+    include: [
+      {
+        model: MonhocVersion,
+        as: 'Versions',
+        attributes: ['id', 'version'],
+        required: false, // LEFT JOIN: môn chưa có phiên bản vẫn hiện
+      },
+    ],
+    order: [
+      ['tenmon', 'ASC'],
+      [{ model: MonhocVersion, as: 'Versions' }, 'version', 'ASC'],
+    ],
+  });
 
+  return rows.map((mh) => ({
+    id: mh.id,
+    maTuQuan: mh.ma_tuquan,
+    tenMon: mh.tenmon,
+    versions: (mh.Versions || []).map((v) => ({ id: v.id, version: v.version })),
+  }));
+}
+
+
+// API lấy danh sách môn học, phiên bản môn học, hashcode Bài giảng (môn học + phiên bản môn học)
+async function getMonHocListWithHashcode() {
+const rows = await BaiGiang.findAll({
+    attributes: ['Id'],
+    include: [{
+        model: ChiTietDangKyBaiGiang,
+        as: 'ChiTiet',
+        attributes: ['Id'],
+        include: [{
+            model: DangKyBaiGiang,
+            as: 'DangKy',
+            attributes: ['Id', 'MonHocVersionId'],
+            include: [{
+                model: MonhocVersion,
+                as: 'MonHocVersion',
+                attributes: ['id', 'version'],
+                include: [{
+                    model: Monhoc,
+                    as: 'Monhoc',
+                    attributes: ['id', 'ma_tuquan', 'tenmon']
+                }]
+            }]
+        }]
+    }]
+});
+
+  // Loại bỏ các môn học + version bị trùng
   const map = new Map();
-  for (const r of result.recordset) {
-    if (!map.has(r.monHocId)) {
-      map.set(r.monHocId, {
-        id: r.monHocId,
-        maTuQuan: r.maTuQuan,
-        tenMon: r.tenMon,
-        versions: [],
+
+  rows.forEach((bg) => {
+    const monHocVersion = bg.ChiTiet.DangKy.MonHocVersion;
+    const monHoc = monHocVersion.Monhoc;
+
+    const key = `${monHoc.ma_tuquan}_${monHocVersion.version}`;
+
+    if (!map.has(key)) {
+      map.set(key, {
+        maMon: monHoc.ma_tuquan,
+        tenMon: monHoc.tenmon,
+        version: monHocVersion.version,
+        hashcode: encodeCourse({
+          maMon: monHoc.ma_tuquan,
+          version: monHocVersion.version,
+        }),
       });
     }
-    if (r.versionId != null) {
-      map.get(r.monHocId).versions.push({ id: r.versionId, version: r.version });
-    }
-  }
+  });
+
   return [...map.values()];
 }
 
-module.exports = { listMonHoc };
+module.exports = { listMonHoc, getMonHocListWithHashcode };

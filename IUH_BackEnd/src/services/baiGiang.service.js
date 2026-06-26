@@ -3,11 +3,15 @@ const path = require('path');
 const os = require('os');
 const { spawn } = require('child_process');
 
-const { getPool, sql } = require('../config/db');
+const { Op } = require('sequelize');
 const { minioClient, BUCKET, ensureBucket, toObjectKey } = require('../config/minio');
-const model = require('../models/baiGiang.model');
-
-const TABLE = model.table;
+const {
+  Monhoc,
+  MonhocVersion,
+  DangKyBaiGiang,
+  ChiTietDangKyBaiGiang,
+  BaiGiang,
+} = require('../models/orm');
 
 // Ưu tiên: FFMPEG_PATH (nếu khai báo) -> binary của ffmpeg-static -> 'ffmpeg' trên PATH
 let ffmpegStatic = null;
@@ -51,27 +55,50 @@ function contentTypeOf(filePath) {
  * @returns {Promise<{ id:number, chiTietId:number, maTuQuan:string, version:string }>}
  */
 async function getViTriBaiGiang(idBaiGiang) {
-  const pool = await getPool();
-  const result = await pool
-    .request()
-    .input('id', sql.Int, idBaiGiang)
-    .query(`
-      SELECT bg.Id AS id, ct.Id AS chiTietId, mh.ma_tuquan AS maTuQuan, mv.[version] AS version
-      FROM ${TABLE} bg
-      INNER JOIN tb_ChiTietDangKyBaiGiang ct ON bg.ChiTietDangKyBaiGiangId = ct.Id
-      INNER JOIN tb_DangKyBaiGiang dk        ON ct.DangKyBaiGiangId = dk.Id
-      INNER JOIN tb_monhoc_version mv         ON dk.MonHocVersionId = mv.id
-      INNER JOIN tb_monhoc mh                 ON mv.id_monhoc = mh.id
-      WHERE bg.Id = @id
-    `);
+  const bg = await BaiGiang.findByPk(idBaiGiang, {
+    attributes: ['Id'],
+    include: [
+      {
+        model: ChiTietDangKyBaiGiang,
+        as: 'ChiTiet',
+        attributes: ['Id'],
+        required: true,
+        include: [
+          {
+            model: DangKyBaiGiang,
+            as: 'DangKy',
+            attributes: ['Id'],
+            required: true,
+            include: [
+              {
+                model: MonhocVersion,
+                as: 'MonHocVersion',
+                attributes: ['version'],
+                required: true,
+                include: [
+                  { model: Monhoc, as: 'Monhoc', attributes: ['ma_tuquan'], required: true },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
 
-  const row = result.recordset[0];
-  if (!row) {
+  const mv = bg?.ChiTiet?.DangKy?.MonHocVersion;
+  if (!bg || !mv || !mv.Monhoc) {
     const err = new Error('Không tìm thấy bài giảng hoặc thiếu liên kết môn học/phiên bản');
     err.status = 404;
     return Promise.reject(err);
   }
-  return row;
+
+  return {
+    id: bg.Id,
+    chiTietId: bg.ChiTiet.Id,
+    maTuQuan: mv.Monhoc.ma_tuquan,
+    version: mv.version,
+  };
 }
 
 // Chuyển video gốc -> HLS (index.m3u8 + các .ts) vào outDir bằng ffmpeg.
@@ -115,15 +142,10 @@ async function uploadFile(objectName, filePath) {
 
 // Lưu object key (tương đối) vào DB. KHÔNG lưu endpoint/bucket (lấy từ .env khi phát).
 async function capNhatLink(idBaiGiang, keyBaiGiang, keyChunk) {
-  const pool = await getPool();
-  await pool
-    .request()
-    .input('id', sql.Int, idBaiGiang)
-    .input('link', sql.VarChar(500), keyBaiGiang)
-    .input('chunk', sql.VarChar(sql.MAX), keyChunk)
-    .query(
-      `UPDATE ${TABLE} SET LinkBaiGiang = @link, LinkChunkBaiGiang = @chunk WHERE Id = @id`
-    );
+  await BaiGiang.update(
+    { LinkBaiGiang: keyBaiGiang, LinkChunkBaiGiang: keyChunk },
+    { where: { Id: idBaiGiang } }
+  );
 }
 
 /**
@@ -197,32 +219,36 @@ async function uploadVideoBaiGiang(idBaiGiang, file) {
  * kèm thông tin bài giảng (video) đã upload nếu có.
  */
 async function listChiTietByVersion(monHocVersionId) {
-  const pool = await getPool();
-  const result = await pool
-    .request()
-    .input('vid', sql.Int, monHocVersionId)
-    .query(`
-      SELECT ct.Id AS chiTietId, ct.NoiDungChuong, ct.GhiChu,
-             dk.Id AS dangKyId,
-             bg.Id AS baiGiangId, bg.TenBaiGiang,
-             bg.LinkBaiGiang, bg.LinkChunkBaiGiang
-      FROM tb_ChiTietDangKyBaiGiang ct
-      INNER JOIN tb_DangKyBaiGiang dk ON ct.DangKyBaiGiangId = dk.Id
-      LEFT JOIN ${TABLE} bg ON bg.ChiTietDangKyBaiGiangId = ct.Id
-      WHERE dk.MonHocVersionId = @vid
-      ORDER BY ct.Id
-    `);
+  const rows = await ChiTietDangKyBaiGiang.findAll({
+    attributes: ['Id', 'NoiDungChuong', 'GhiChu', 'DangKyBaiGiangId'],
+    include: [
+      {
+        model: DangKyBaiGiang,
+        as: 'DangKy',
+        attributes: ['Id'],
+        required: true,
+        where: { MonHocVersionId: monHocVersionId },
+      },
+      {
+        model: BaiGiang,
+        as: 'BaiGiang',
+        attributes: ['Id', 'TenBaiGiang', 'LinkBaiGiang', 'LinkChunkBaiGiang'],
+        required: false,
+      },
+    ],
+    order: [['Id', 'ASC']],
+  });
 
   // KHÔNG trả URL MinIO ra client. Chỉ trả cờ có video/HLS (xem trước qua proxy có token).
-  return result.recordset.map((r) => ({
-    chiTietId: r.chiTietId,
-    NoiDungChuong: r.NoiDungChuong,
-    GhiChu: r.GhiChu,
-    dangKyId: r.dangKyId,
-    baiGiangId: r.baiGiangId,
-    TenBaiGiang: r.TenBaiGiang,
-    coVideo: !!r.LinkBaiGiang,
-    coHls: !!r.LinkChunkBaiGiang,
+  return rows.map((ct) => ({
+    chiTietId: ct.Id,
+    NoiDungChuong: ct.NoiDungChuong,
+    GhiChu: ct.GhiChu,
+    dangKyId: ct.DangKyBaiGiangId,
+    baiGiangId: ct.BaiGiang?.Id ?? null,
+    TenBaiGiang: ct.BaiGiang?.TenBaiGiang ?? null,
+    coVideo: !!ct.BaiGiang?.LinkBaiGiang,
+    coHls: !!ct.BaiGiang?.LinkChunkBaiGiang,
   }));
 }
 
@@ -231,44 +257,71 @@ async function listChiTietByVersion(monHocVersionId) {
  * Dùng cho trang xem bài giảng (CoursePlayer). version có thể bỏ trống = mọi phiên bản.
  */
 async function listVideos(maMon, version) {
-  const pool = await getPool();
-  const req = pool.request().input('maMon', sql.NVarChar(20), maMon);
+  // Lọc theo phiên bản (tùy chọn) trên tb_monhoc_version.
+  const versionWhere = version ? { version } : undefined;
 
-  let versionFilter = '';
-  if (version) {
-    req.input('version', sql.NVarChar(100), version);
-    versionFilter = 'AND mv.[version] = @version';
-  }
-
-  const result = await req.query(`
-    SELECT bg.Id AS baiGiangId, ct.Id AS chiTietId,
-           ct.NoiDungChuong AS noiDungChuong,
-           bg.TenBaiGiang AS tenBaiGiang,
-           mv.[version] AS version,
-           mh.tenmon AS tenMon,
-           bg.LinkBaiGiang, bg.LinkChunkBaiGiang
-    FROM tb_monhoc mh
-    INNER JOIN tb_monhoc_version mv         ON mv.id_monhoc = mh.id
-    INNER JOIN tb_DangKyBaiGiang dk         ON dk.MonHocVersionId = mv.id
-    INNER JOIN tb_ChiTietDangKyBaiGiang ct  ON ct.DangKyBaiGiangId = dk.Id
-    INNER JOIN ${TABLE} bg                   ON bg.ChiTietDangKyBaiGiangId = ct.Id
-    WHERE mh.ma_tuquan = @maMon ${versionFilter}
-      AND bg.LinkBaiGiang IS NOT NULL
-    ORDER BY mv.[version], ct.Id
-  `);
+  const rows = await BaiGiang.findAll({
+    attributes: ['Id', 'TenBaiGiang', 'LinkBaiGiang', 'LinkChunkBaiGiang'],
+    where: { LinkBaiGiang: { [Op.ne]: null } },
+    include: [
+      {
+        model: ChiTietDangKyBaiGiang,
+        as: 'ChiTiet',
+        attributes: ['Id', 'NoiDungChuong'],
+        required: true,
+        include: [
+          {
+            model: DangKyBaiGiang,
+            as: 'DangKy',
+            attributes: ['Id'],
+            required: true,
+            include: [
+              {
+                model: MonhocVersion,
+                as: 'MonHocVersion',
+                attributes: ['version'],
+                required: true,
+                where: versionWhere,
+                include: [
+                  {
+                    model: Monhoc,
+                    as: 'Monhoc',
+                    attributes: ['tenmon'],
+                    required: true,
+                    where: { ma_tuquan: maMon },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    order: [
+      [
+        { model: ChiTietDangKyBaiGiang, as: 'ChiTiet' },
+        { model: DangKyBaiGiang, as: 'DangKy' },
+        { model: MonhocVersion, as: 'MonHocVersion' },
+        'version',
+        'ASC',
+      ],
+      [{ model: ChiTietDangKyBaiGiang, as: 'ChiTiet' }, 'Id', 'ASC'],
+    ],
+  });
 
   // KHÔNG trả URL MinIO / mã môn ra client. Chỉ trả tên môn (hiển thị) + cờ video/HLS.
-  const videos = result.recordset.map((r) => ({
-    baiGiangId: r.baiGiangId,
-    chiTietId: r.chiTietId,
-    noiDungChuong: r.noiDungChuong,
-    tenBaiGiang: r.tenBaiGiang,
-    version: r.version,
-    coVideo: !!r.LinkBaiGiang,
-    coHls: !!r.LinkChunkBaiGiang,
+  const videos = rows.map((bg) => ({
+    baiGiangId: bg.Id,
+    chiTietId: bg.ChiTiet.Id,
+    noiDungChuong: bg.ChiTiet.NoiDungChuong,
+    tenBaiGiang: bg.TenBaiGiang,
+    version: bg.ChiTiet.DangKy.MonHocVersion.version,
+    coVideo: !!bg.LinkBaiGiang,
+    coHls: !!bg.LinkChunkBaiGiang,
   }));
 
-  return { subjectName: result.recordset[0]?.tenMon ?? null, videos };
+  const subjectName = rows[0]?.ChiTiet?.DangKy?.MonHocVersion?.Monhoc?.tenmon ?? null;
+  return { subjectName, videos };
 }
 
 /**
@@ -278,40 +331,53 @@ async function listVideos(maMon, version) {
  * @returns {Promise<{ baiGiangId, chiTietId, tenBaiGiang, noiDungChuong, subjectName, version, coVideo, coHls }>}
  */
 async function getBaiGiangById(idBaiGiang) {
-  const pool = await getPool();
-  const result = await pool
-    .request()
-    .input('id', sql.Int, idBaiGiang)
-    .query(`
-      SELECT bg.Id AS baiGiangId, ct.Id AS chiTietId,
-             bg.TenBaiGiang AS tenBaiGiang,
-             ct.NoiDungChuong AS noiDungChuong,
-             mh.tenmon AS subjectName,
-             mv.[version] AS version,
-             bg.LinkBaiGiang, bg.LinkChunkBaiGiang
-      FROM ${TABLE} bg
-      INNER JOIN tb_ChiTietDangKyBaiGiang ct ON bg.ChiTietDangKyBaiGiangId = ct.Id
-      INNER JOIN tb_DangKyBaiGiang dk        ON ct.DangKyBaiGiangId = dk.Id
-      INNER JOIN tb_monhoc_version mv         ON dk.MonHocVersionId = mv.id
-      INNER JOIN tb_monhoc mh                 ON mv.id_monhoc = mh.id
-      WHERE bg.Id = @id
-    `);
+  const bg = await BaiGiang.findByPk(idBaiGiang, {
+    attributes: ['Id', 'TenBaiGiang', 'LinkBaiGiang', 'LinkChunkBaiGiang'],
+    include: [
+      {
+        model: ChiTietDangKyBaiGiang,
+        as: 'ChiTiet',
+        attributes: ['Id', 'NoiDungChuong'],
+        required: true,
+        include: [
+          {
+            model: DangKyBaiGiang,
+            as: 'DangKy',
+            attributes: ['Id'],
+            required: true,
+            include: [
+              {
+                model: MonhocVersion,
+                as: 'MonHocVersion',
+                attributes: ['version'],
+                required: true,
+                include: [
+                  { model: Monhoc, as: 'Monhoc', attributes: ['tenmon'], required: true },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
 
-  const r = result.recordset[0];
-  if (!r) {
-    const err = new Error('Không tìm thấy bài giảng');
+  if (!bg) {
+    const err = new Error('Không tìm thấy bài giảng, vui lòng chọn lại bài giảng khác');
     err.status = 404;
     throw err;
   }
+
+  const mv = bg.ChiTiet.DangKy.MonHocVersion;
   return {
-    baiGiangId: r.baiGiangId,
-    chiTietId: r.chiTietId,
-    tenBaiGiang: r.tenBaiGiang,
-    noiDungChuong: r.noiDungChuong,
-    subjectName: r.subjectName,
-    version: r.version,
-    coVideo: !!r.LinkBaiGiang,
-    coHls: !!r.LinkChunkBaiGiang,
+    baiGiangId: bg.Id,
+    chiTietId: bg.ChiTiet.Id,
+    tenBaiGiang: bg.TenBaiGiang,
+    noiDungChuong: bg.ChiTiet.NoiDungChuong,
+    subjectName: mv.Monhoc.tenmon,
+    version: mv.version,
+    coVideo: !!bg.LinkBaiGiang,
+    coHls: !!bg.LinkChunkBaiGiang,
   };
 }
 
@@ -320,46 +386,35 @@ async function getBaiGiangById(idBaiGiang) {
  * Dùng trước khi upload video cho chương chưa có bài giảng.
  */
 async function getOrCreateBaiGiang(chiTietId) {
-  const pool = await getPool();
+  const found = await BaiGiang.findOne({
+    attributes: ['Id'],
+    where: { ChiTietDangKyBaiGiangId: chiTietId },
+  });
+  if (found) return found.Id;
 
-  const found = await pool
-    .request()
-    .input('ct', sql.Int, chiTietId)
-    .query(`SELECT Id FROM ${TABLE} WHERE ChiTietDangKyBaiGiangId = @ct`);
-  if (found.recordset[0]) return found.recordset[0].Id;
-
-  const ct = await pool
-    .request()
-    .input('ct', sql.Int, chiTietId)
-    .query(
-      `SELECT Id, NoiDungChuong FROM tb_ChiTietDangKyBaiGiang WHERE Id = @ct`
-    );
-  if (!ct.recordset[0]) {
+  const ct = await ChiTietDangKyBaiGiang.findByPk(chiTietId, {
+    attributes: ['Id', 'NoiDungChuong'],
+  });
+  if (!ct) {
     const err = new Error('Không tìm thấy chi tiết đăng ký bài giảng');
     err.status = 404;
     throw err;
   }
 
-  const inserted = await pool
-    .request()
-    .input('ct', sql.Int, chiTietId)
-    .input('ten', sql.NVarChar(255), ct.recordset[0].NoiDungChuong)
-    .query(
-      `INSERT INTO ${TABLE} (ChiTietDangKyBaiGiangId, TenBaiGiang)
-       OUTPUT INSERTED.Id VALUES (@ct, @ten)`
-    );
-  return inserted.recordset[0].Id;
+  const created = await BaiGiang.create({
+    ChiTietDangKyBaiGiangId: chiTietId,
+    TenBaiGiang: ct.NoiDungChuong,
+  });
+  return created.Id;
 }
 
 // Lấy object key của thư mục chunk (vd "2101420/1/3/chunk") của 1 bài giảng.
 async function getChunkDir(idBaiGiang) {
-  const pool = await getPool();
-  const r = await pool
-    .request()
-    .input('id', sql.Int, idBaiGiang)
-    .query(`SELECT LinkChunkBaiGiang FROM ${TABLE} WHERE Id = @id`);
+  const bg = await BaiGiang.findByPk(idBaiGiang, {
+    attributes: ['LinkChunkBaiGiang'],
+  });
 
-  const stored = r.recordset[0]?.LinkChunkBaiGiang;
+  const stored = bg?.LinkChunkBaiGiang;
   const key = toObjectKey(stored);
   if (!key) {
     const err = new Error('Bài giảng chưa có bản phát (HLS)');
@@ -419,6 +474,55 @@ async function streamHls(idBaiGiang, fileName, token, res) {
   res.setHeader('Cache-Control', 'private, max-age=3600');
   stream.on('error', () => res.destroy());
   return stream.pipe(res);
+}
+
+
+/**
+ * xóa video bài giảng (truyền paramater id bài giảng, paramater(KEY_LOGIN_TEACHER: đúng mới xóa)
+ * @param {number} idBaiGiang
+ * @param {string} teacherKey
+ * @returns {Promise<{ message: string }>}
+ */
+async function deleteVideo(idBaiGiang, teacherKey) {
+  if (!process.env.KEY_LOGIN_TEACHER || teacherKey !== process.env.KEY_LOGIN_TEACHER) {
+    const err = new Error('Key giảng viên không hợp lệ');
+    err.status = 401;
+    throw err;
+  }
+  
+  const bg = await BaiGiang.findByPk(idBaiGiang, {
+    attributes: ['Id', 'LinkBaiGiang', 'LinkChunkBaiGiang'],
+  });
+  if (!bg) {
+    const err = new Error('Không tìm thấy bài giảng');
+    err.status = 404;
+    throw err;
+  }
+  // Xử lý xóa video ở đây (ví dụ: xóa từ MinIO, cập nhật cơ sở dữ liệu, v.v.) , xóa chunk luôn
+  const objectKeysToDelete = [];
+  if (bg.LinkBaiGiang) {
+    objectKeysToDelete.push(toObjectKey(bg.LinkBaiGiang));
+  }
+  if (bg.LinkChunkBaiGiang) {
+    const chunkDir = path.posix.dirname(toObjectKey(bg.LinkChunkBaiGiang));
+    // Xóa tất cả các file trong thư mục chunk
+    const listObjects = await minioClient.listObjectsV2(BUCKET, chunkDir, true);
+    for await (const obj of listObjects) {
+      objectKeysToDelete.push(obj.name);
+    }
+  }
+
+  if (objectKeysToDelete.length > 0) {
+    await minioClient.removeObjects(BUCKET, objectKeysToDelete);
+  }
+
+  // Cập nhật cơ sở dữ liệu để xóa liên kết video và chunk
+  await BaiGiang.update(
+    { LinkBaiGiang: null, LinkChunkBaiGiang: null },
+    { where: { Id: idBaiGiang } }
+  );
+
+  return { message: 'Xóa video bài giảng thành công' };
 }
 
 module.exports = {

@@ -21,7 +21,7 @@ exports.kiemTraMon = async (req, res, next) => {
     const header = req.headers.authorization || '';
     const wstoken = header.startsWith('Bearer ') ? header.slice(7) : null;
     if (!wstoken) {
-      return res.status(401).json({ message: 'Chưa đăng nhập' });
+      return res.status(401).json({ message: 'Bạn vui lòng đăng nhập' });
     }
 
     const { course } = req.query;
@@ -45,7 +45,7 @@ exports.importFromLms = async (req, res, next) => {
     const header = req.headers.authorization || '';
     const wstoken = header.startsWith('Bearer ') ? header.slice(7) : null;
     if (!wstoken) {
-      return res.status(401).json({ message: 'Chưa đăng nhập' });
+      return res.status(401).json({ message: 'Bạn vui lòng đăng nhập' });
     }
 
     // Lấy MSSV (username) + userid từ chính wstoken
@@ -57,7 +57,7 @@ exports.importFromLms = async (req, res, next) => {
     res.json({ mssv: info.username, ...result });
   } catch (err) {
     if (err.status === 401) {
-      return res.status(401).json({ message: err.message });
+      return res.status(401).json({ message: 'Bạn vui lòng đăng nhập' });
     }
     next(err);
   }

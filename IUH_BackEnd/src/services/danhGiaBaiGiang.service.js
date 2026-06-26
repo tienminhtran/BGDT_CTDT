@@ -1,9 +1,7 @@
-const { getPool, sql } = require('../config/db');
-const model = require('../models/danhGiaBaiGiang.model');
+const { fn, col, literal } = require('sequelize');
+const { DanhGiaBaiGiang } = require('../models/orm');
 const baiGiang = require('./baiGiang.service');
 const svhp = require('./sinhVienHocPhan.service');
-
-const TABLE = model.table;
 
 /**
  * Helper: kiểm tra 1 sinh viên (MSSV) có quyền bình luận/đánh giá 1 bài giảng không.
@@ -22,7 +20,7 @@ async function kiemTraQuyenDanhGia(baiGiangId, mssv) {
   return { allowed, maMon, maHocPhan };
 }
 
-// Map 1 dòng DB -> object trả ra API (field tiếng Anh)
+// Map 1 bản ghi (Sequelize instance hoặc plain) -> object trả ra API (field tiếng Anh)
 function mapReview(r) {
   if (!r) return null;
   return {
@@ -37,16 +35,11 @@ function mapReview(r) {
 
 // Lấy đánh giá của 1 SV cho 1 bài giảng (null nếu chưa có)
 async function getDanhGiaCuaSinhVien(baiGiangId, mssv) {
-  const pool = await getPool();
-  const result = await pool
-    .request()
-    .input('bg', sql.Int, baiGiangId)
-    .input('mssv', sql.NVarChar(20), mssv)
-    .query(
-      `SELECT Id, BaiGiangId, MSSV, SoSao, BinhLuan, NgayDanhGia
-       FROM ${TABLE} WHERE BaiGiangId = @bg AND MSSV = @mssv`
-    );
-  return mapReview(result.recordset[0]);
+  const row = await DanhGiaBaiGiang.findOne({
+    attributes: ['Id', 'BaiGiangId', 'MSSV', 'SoSao', 'BinhLuan', 'NgayDanhGia'],
+    where: { BaiGiangId: baiGiangId, MSSV: mssv },
+  });
+  return mapReview(row);
 }
 
 /**
@@ -78,20 +71,15 @@ async function taoDanhGia(baiGiangId, mssv, { stars, comment }) {
     throw err;
   }
 
-  const pool = await getPool();
-  const result = await pool
-    .request()
-    .input('bg', sql.Int, baiGiangId)
-    .input('mssv', sql.NVarChar(20), mssv)
-    .input('sao', sql.TinyInt, sao)
-    .input('binhLuan', sql.NVarChar(255), comment ?? null)
-    .query(
-      `INSERT INTO ${TABLE} (BaiGiangId, MSSV, SoSao, BinhLuan)
-       OUTPUT INSERTED.Id, INSERTED.BaiGiangId, INSERTED.MSSV,
-              INSERTED.SoSao, INSERTED.BinhLuan, INSERTED.NgayDanhGia
-       VALUES (@bg, @mssv, @sao, @binhLuan)`
-    );
-  return mapReview(result.recordset[0]);
+  // Không set NgayDanhGia -> DB tự điền GETDATE(); reload để lấy giá trị vừa sinh.
+  const created = await DanhGiaBaiGiang.create({
+    BaiGiangId: baiGiangId,
+    MSSV: mssv,
+    SoSao: sao,
+    BinhLuan: comment ?? null,
+  });
+  await created.reload();
+  return mapReview(created);
 }
 
 /**
@@ -101,7 +89,9 @@ async function taoDanhGia(baiGiangId, mssv, { stars, comment }) {
  * @returns {Promise<object>} bản ghi sau khi sửa
  */
 async function suaDanhGia(baiGiangId, mssv, { stars, comment }) {
-  const hienTai = await getDanhGiaCuaSinhVien(baiGiangId, mssv);
+  const hienTai = await DanhGiaBaiGiang.findOne({
+    where: { BaiGiangId: baiGiangId, MSSV: mssv },
+  });
   if (!hienTai) {
     const err = new Error('Bạn chưa đánh giá bài giảng này');
     err.status = 404;
@@ -116,7 +106,7 @@ async function suaDanhGia(baiGiangId, mssv, { stars, comment }) {
     throw err;
   }
 
-  let sao = hienTai.stars;
+  let sao = hienTai.SoSao;
   if (coSao) {
     sao = parseInt(stars, 10);
     if (!Number.isInteger(sao) || sao < 1 || sao > 5) {
@@ -126,20 +116,13 @@ async function suaDanhGia(baiGiangId, mssv, { stars, comment }) {
     }
   }
 
-  const pool = await getPool();
-  const result = await pool
-    .request()
-    .input('id', sql.Int, hienTai.id)
-    .input('sao', sql.TinyInt, sao)
-    .input('binhLuan', sql.NVarChar(255), coBinhLuan ? comment : hienTai.comment)
-    .query(
-      `UPDATE ${TABLE}
-         SET SoSao = @sao, BinhLuan = @binhLuan, NgayDanhGia = GETDATE()
-       OUTPUT INSERTED.Id, INSERTED.BaiGiangId, INSERTED.MSSV,
-              INSERTED.SoSao, INSERTED.BinhLuan, INSERTED.NgayDanhGia
-       WHERE Id = @id`
-    );
-  return mapReview(result.recordset[0]);
+  await hienTai.update({
+    SoSao: sao,
+    BinhLuan: coBinhLuan ? comment : hienTai.BinhLuan,
+    NgayDanhGia: fn('GETDATE'),
+  });
+  await hienTai.reload(); // lấy lại NgayDanhGia (GETDATE) từ DB
+  return mapReview(hienTai);
 }
 
 /**
@@ -150,24 +133,23 @@ async function suaDanhGia(baiGiangId, mssv, { stars, comment }) {
  * @param {number} baiGiangId
  */
 async function getThongKeDanhGia(baiGiangId) {
-  const pool = await getPool();
+  // Dùng findAll (không limit) để tránh SQL Server tự thêm ORDER BY Id
+  // -> xung đột với query tổng hợp (không có GROUP BY). Query này luôn trả đúng 1 dòng.
+  const rows = await DanhGiaBaiGiang.findAll({
+    where: { BaiGiangId: baiGiangId },
+    attributes: [
+      [fn('COUNT', col('Id')), 'tongSo'],
+      [fn('AVG', literal('CAST(SoSao AS DECIMAL(4,2))')), 'diemTrungBinh'],
+      [fn('SUM', literal('CASE WHEN SoSao = 1 THEN 1 ELSE 0 END')), 'sao1'],
+      [fn('SUM', literal('CASE WHEN SoSao = 2 THEN 1 ELSE 0 END')), 'sao2'],
+      [fn('SUM', literal('CASE WHEN SoSao = 3 THEN 1 ELSE 0 END')), 'sao3'],
+      [fn('SUM', literal('CASE WHEN SoSao = 4 THEN 1 ELSE 0 END')), 'sao4'],
+      [fn('SUM', literal('CASE WHEN SoSao = 5 THEN 1 ELSE 0 END')), 'sao5'],
+    ],
+    raw: true,
+  });
+  const tk = rows[0];
 
-  const thongKe = await pool
-    .request()
-    .input('bg', sql.Int, baiGiangId)
-    .query(`
-      SELECT
-        COUNT(*) AS tongSo,
-        AVG(CAST(SoSao AS DECIMAL(4,2))) AS diemTrungBinh,
-        SUM(CASE WHEN SoSao = 1 THEN 1 ELSE 0 END) AS sao1,
-        SUM(CASE WHEN SoSao = 2 THEN 1 ELSE 0 END) AS sao2,
-        SUM(CASE WHEN SoSao = 3 THEN 1 ELSE 0 END) AS sao3,
-        SUM(CASE WHEN SoSao = 4 THEN 1 ELSE 0 END) AS sao4,
-        SUM(CASE WHEN SoSao = 5 THEN 1 ELSE 0 END) AS sao5
-      FROM ${TABLE} WHERE BaiGiangId = @bg
-    `);
-
-  const tk = thongKe.recordset[0];
   return {
     total: tk.tongSo,
     average: tk.diemTrungBinh ? Number(tk.diemTrungBinh) : 0,

@@ -110,10 +110,78 @@ export default function CourseList() {
         />
         <button
           type="submit"
-          className="flex items-center justify-center gap-1.5 rounded-sm bg-[#115EA8] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0d4a82]"
+          className="flex items-center justify-center gap-1.5 rounded-sm bg-[#153898] px-4 py-2 text-sm cursor-pointer font-semibold text-white transition hover:bg-[#0d4a82]"
         >
-          <GraduationCap size={16} />
-          Vào học
+           <svg
+            id="Layer_1"
+            xmlns="http://www.w3.org/2000/svg"
+            xmlnsXlink="http://www.w3.org/1999/xlink"
+            width="14px"
+            height="14px"
+            viewBox="0 0 60 60"
+            enableBackground="new 0 0 60 60"
+            xmlSpace="preserve"
+          >
+            <g id="XMLID_1_">
+              <g>
+                <polygon
+                  fill="#ffffff"
+                  points="34.305,22.889 25.708,27.876 25.708,17.902"
+                />
+                <rect
+                  x={1.693}
+                  y={44.797}
+                  fill="#ffffff"
+                  width={56.615}
+                  height={13.921}
+                />
+                <text
+                  x={30}
+                  y={54}
+                  textAnchor="middle"
+                  fill="#0800e5"
+                  fontSize={10}
+                  fontFamily="Arial"
+                  fontWeight="bold"
+                >
+                  {"\n        BGDT PDT\n    "}
+                </text>
+              </g>
+              <g>
+                <polygon
+                  fill="none"
+                  stroke="#ffffff"
+                  strokeWidth={3}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeMiterlimit={10}
+                  points=" 58.307,44.797 58.307,58.719 1.693,58.719 1.693,44.797 1.693,1.833 58.307,1.833  "
+                />
+                <line
+                  fill="none"
+                  stroke="#ffffff"
+                  strokeWidth={3}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeMiterlimit={10}
+                  x1={1.693}
+                  y1={44.797}
+                  x2={58.307}
+                  y2={44.797}
+                />
+                <polygon
+                  fill="none"
+                  stroke="#ffffff"
+                  strokeWidth={3}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeMiterlimit={10}
+                  points=" 34.305,22.889 25.708,27.876 25.708,17.902  "
+                />
+              </g>
+            </g>
+          </svg>
+          Bài giảng
         </button>
       </form>
 
@@ -121,7 +189,7 @@ export default function CourseList() {
         {state.courses.map((c) => (
           <div
             key={c.id}
-            className="flex h-full flex-col border border-slate-200 bg-white p-5 shadow-sm transition hover:border-[#115EA8] hover:shadow-md"
+            className="flex h-full flex-col border border-slate-200 bg-white p-5 shadow-sm transition hover:border-[#153898] hover:shadow-md"
           >
             <h3 className="line-clamp-2 min-h-[3rem] font-semibold text-slate-800">
               {c.fullname}
@@ -138,7 +206,7 @@ export default function CourseList() {
                 className="flex items-center justify-center gap-1.5 rounded-sm border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-[#115EA8] hover:text-[#115EA8]"
               >
                 <ExternalLink size={16} />
-                Vào LMS
+                Truy cập LMS
               </a>
             </div>
           </div>

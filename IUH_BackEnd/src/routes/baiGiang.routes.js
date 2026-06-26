@@ -31,4 +31,9 @@ router.get('/:id/hls/:file', controller.streamHls);
 // form-data: video=<file>  -> upload lên MinIO theo [ma_tuquan]/[version]/[Id]/{stream,chunk}
 router.post('/:id/video', apiKey, controller.uploadMiddleware, controller.uploadVideo);
 
+
+// đang viết
+// xóa video bài giảng (truyền paramater id bài giảng, paramater(KEY_LOGIN_TEACHER: đúng mới xóa)
+router.delete('/:id/:key/video', apiKey, controller.deleteVideo);
+
 module.exports = router;

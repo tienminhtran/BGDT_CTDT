@@ -163,7 +163,10 @@ exports.listVideos = async (req, res, next) => {
 exports.createCourseToken = async (req, res, next) => {
   try {
     const { courseCode, version } = req.body || {};
-    if (!courseCode) return res.status(400).json({ message: 'Thiếu mã môn' });
+    if (!courseCode) return res.status(400).json({ message: 'Chưa nhập mã môn học' });
+    if(!version) {
+      return res.status(400).json({ message: 'Chưa nhập phiên bản' });
+    }
     const token = encodeCourse({ maMon: String(courseCode), version: version ?? null });
     res.json({ token });
   } catch (err) {
@@ -199,3 +202,36 @@ exports.ensureBaiGiang = async (req, res, next) => {
     next(err);
   }
 };
+
+
+exports.deleteVideo = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ message: 'Id bài giảng không hợp lệ' });
+    }
+    const teacherKey = req.params.key;
+    if (!process.env.KEY_LOGIN_TEACHER || teacherKey !== process.env.KEY_LOGIN_TEACHER) {
+      return res.status(401).json({ message: 'Key giảng viên không hợp lệ' });
+    }
+
+    await baiGiang.deleteVideoBaiGiang(id, teacherKey);
+    res.json({ message: 'Xóa video bài giảng thành công' });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ message: err.message });
+    next(err);
+  }
+};
+
+/**
+ * Hàm kiểm tra trước khi upload 
+ * Trường hợp 1 (Đã hoàn thành): * Kiểm tra trong thư mục lectures/{lectureId}/stream/ xem đã có file video tồn tại hay chưa.
+
+     Nếu ĐÃ CÓ Stearm. -> đang xử lý bài giảng, bạn không được phép upload vào 
+     Nếu ĐÃ CÓ Stearm, chunk , trả về mã trạng thái 200 OK. -> đã upload xong
+
+* Trường hợp 2 (Đang upload): * Nếu chưa có video ở thư mục stream, chưa có thư mục chunk thì không cho upload vaào thư mục bài giảng đó
+* Trường hợp 3 (Bị chặn / Không cho phép): * Nếu thư mục gốc của lectureId đã được khởi tạo nhưng bên trong CHƯA CÓ CHUNKS nào và cũng CHƯA CÓ VIDEO STREAM, hệ thống xác định đây là trạng thái lỗi hoặc phiên làm việc không hợp lệ.
+
+Trả về mã trạng thái 403 Forbidden và chặn, không cho phép client tiếp tục upload bất kỳ dữ liệu nào vào thư mục chứa ID bài giảng này nữa.
+ */

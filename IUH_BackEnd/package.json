@@ -27,7 +27,8 @@
     "minio": "^8.0.7",
     "morgan": "^1.11.0",
     "mssql": "^12.5.5",
-    "multer": "^2.1.1"
+    "multer": "^2.1.1",
+    "sequelize": "^6.37.8"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

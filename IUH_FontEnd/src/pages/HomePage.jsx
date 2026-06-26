@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import bgImage from '../assets/bg.jpg'
 import logo from '../assets/logo.svg'
+import img_bg_login from '../assets/img_bg_login.svg'
 
 /* ---------- Số đếm động khi cuộn tới ---------- */
 function CountUp({ end, suffix = '', duration = 1500 }) {
@@ -108,24 +109,63 @@ export default function HomePage() {
       <section className="relative flex min-h-screen w-full items-center overflow-hidden">
         {/* Lớp ảnh nền mờ (chỉ blur ảnh, không blur nội dung) */}
         <div
-          className="absolute inset-0 scale-110 blur-md"
+          className="absolute inset-0 scale-110 bg-cover bg-center bg-no-repeat blur-sm"
           style={heroBg}
           aria-hidden="true"
         />
-        <div className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-10 px-6 py-16 lg:grid-cols-2">
-          {/* Giới thiệu */}
-          <div className="text-center lg:text-left" style={{ color: '#153898' }}>
-            <h1 className="text-4xl font-extrabold leading-tight sm:text-5xl">
-              HỆ THỐNG BÀI GIẢNG ĐIỆN TỬ IUH
+        <div
+          className="absolute inset-0 bg-black/30"
+          aria-hidden="true"
+        />
+
+        <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center gap-10 px-6 py-16 lg:flex-row lg:justify-between lg:gap-8">
+          {/* Hướng dẫn sử dụng - hiện sau Login trên mobile, hiện trước (trái) trên desktop */}
+          <div className="order-2 w-full max-w-md rounded-xl border border-white/30 bg-[#8CB8C4]/80 p-7 shadow-xl backdrop-blur-md lg:order-1">          <h1 className="text-center text-2xl font-bold text-white drop-shadow sm:text-3xl">
+               Hệ thống Bài giảng điện tử
             </h1>
-            <p className="mt-5 text-lg">
-              Kho học liệu số chính thức của Trường Đại học Công nghiệp TP.HCM —
-              học mọi lúc, mọi nơi.
+            <p className="mt-1 text-center text-lg font-bold text-blue-900 drop-shadow sm:text-xl">
+              Đại học Công nghiệp TP.HCM
             </p>
+
+            <ol className="mt-6 space-y-4 text-[15px] leading-relaxed text-black/90">
+              <li className="flex gap-2">
+                <span className="font-semibold">1.</span>
+                <span>
+                  Sinh viên, giảng viên đăng nhập bằng tài khoản{' '}
+                  <span className="font-medium text-blue-200">LMS</span> do nhà
+                  trường cấp. Không sử dụng tài khoản của hệ thống khác để đăng
+                  nhập.
+                </span>
+              </li>
+              <li className="flex gap-2">
+                <span className="font-semibold">2.</span>
+                <span>
+                  Nếu quên mật khẩu hoặc không đăng nhập được, vui lòng liên hệ
+                  Trung tâm Quản trị Hệ thống E.2 để được hỗ trợ về vấn đề tài
+                  khoản LMS.
+                </span>
+              </li>
+              <li className="flex gap-2">
+                <span className="font-semibold">3.</span>
+                <span>
+                  Sau khi đăng nhập, sinh viên có thể xem bài giảng, tài liệu
+                  học tập theo từng môn học, khoa/viện đã đăng ký trong học kỳ.
+                </span>
+              </li>
+              <li className="flex gap-2">
+                <span className="font-semibold">4.</span>
+                <span>
+                  Nếu gặp lỗi kỹ thuật trong quá trình sử dụng (không tải được
+                  video, lỗi trang...), vui lòng liên hệ Phòng Đào tạo để được hỗ trợ.
+                </span>
+              </li>
+            </ol>
           </div>
 
-          {/* Form đăng nhập (hiển thị trực tiếp) */}
-          <LoginForm login={login} />
+          {/* Form đăng nhập - hiện trước trên mobile, hiện sau (phải) trên desktop */}
+          <div className="order-1 w-full max-w-md lg:order-2">
+            <LoginForm login={login} />
+          </div>
         </div>
       </section>
     </div>
@@ -143,62 +183,114 @@ function LoginForm({ login }) {
     e.preventDefault()
     setLoading(true)
     setError('')
+
     try {
       await login(username, password)
     } catch (err) {
       setError(err?.response?.data?.message || 'Sai tài khoản hoặc mật khẩu')
     } finally {
       setLoading(false)
-      setPassword('') // không giữ mật khẩu trong state sau khi submit
+      setPassword('')
     }
   }
 
   return (
-    <div className="mx-auto w-full max-w-md rounded-sm bg-white p-8 shadow-2xl">
-      <img
-        src={logo}
-        alt="IUH"
-        className="mx-auto w-40 object-contain"
-      />
-      <h2 className="mt-4 text-center text-xl font-bold text-blue-900">
-        Đăng nhập hệ thống
-      </h2>
-      <p className="mt-1 text-center text-sm text-slate-500">
-        Sử dụng tài khoản <a href="https://lms.iuh.edu.vn" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-          LMS
-        </a>
-      </p>
+    <div className="relative mx-auto w-full max-w-lg overflow-hidden rounded-xl bg-white shadow-2xl">
 
-      <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-3">
-        <input
-          type="text"
-          placeholder="MSSV / Tài khoản"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          className="rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-blue-900"
-        />
-        <input
-          type="password"
-          placeholder="Mật khẩu"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-blue-900"
+      {/* Banner */}
+      <div className="relative h-44 bg-gradient-to-r from-blue-500 to-blue-400">
+        <img
+          src={img_bg_login}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover opacity-40"
         />
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        <div className="relative z-10 flex h-full flex-col items-center justify-center">
+          <img
+            src={logo}
+            alt="IUH"
+            className="w-52 object-contain"
+          />
 
-        <button
-          type="submit"
-          // disabled={loading || !username || !password}
-          className="bg-blue-600 px-6 py-3.5 text-base font-semibold text-white shadow transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
-        >
-          {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
-        </button>
-      </form>
+          <h2 className="mt-4 text-2xl font-bold text-white">
+            Đăng nhập hệ thống
+          </h2>
 
-      <p className="mt-4 text-center text-xs text-slate-400">
-        Hệ thống dành riêng cho Giảng viên và Sinh viên Đại học Công nghiệp TP.HCM.
-      </p>
+          <p className="mt-1 text-sm text-blue-100">
+          
+            Sử dụng tài khoản{' '}
+            <a
+              href="https://lms.iuh.edu.vn"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-blue-600 hover:underline"
+            >
+              LMS của Trường
+            </a>
+          </p>
+        </div>
+      </div>
+
+      {/* Form */}
+      <div className="relative p-8">
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Mã số sinh viên
+            </label>
+
+            <input
+              type="text"
+              placeholder="Nhập MSSV"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full rounded-sm border border-gray-300 px-4 py-3 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Mật khẩu
+            </label>
+
+            <input
+              type="password"
+              placeholder="Nhập mật khẩu"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-sm border border-gray-300 px-4 py-3 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+            />
+          </div>
+
+          {error && (
+            <div className="rounded-sm border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="w-full rounded-sm bg-blue-700 py-3 text-lg font-semibold text-white transition hover:bg-blue-800 disabled:bg-blue-300"
+          >
+            {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+          </button>
+        </form>
+
+        <div className="mt-2 border-t pt-5 text-center text-sm text-slate-500">
+          <p className="text-xs text-slate-400">
+            © 2026 Phòng Đào tạo - Đại học Công nghiệp TP.HCM
+          </p>
+        </div>
+
+        {/* Hoa văn góc dưới */}
+        <img
+          src={img_bg_login}
+          alt=""
+          className="pointer-events-none absolute bottom-0 right-0 w-52 opacity-10"
+        />
+      </div>
     </div>
   )
 }
@@ -207,7 +299,7 @@ function LoginForm({ login }) {
 function FacultyCard({ faculty, onLogin }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md">
+    <div className="rounded-sm border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
