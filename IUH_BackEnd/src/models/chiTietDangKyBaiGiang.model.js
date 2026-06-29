@@ -29,7 +29,7 @@ const ChiTietDangKyBaiGiang = {
     NgayDuyetAdmin: { type: sql.DateTime, nullable: true },
     GhiChuAdmin: { type: sql.NVarChar(sql.MAX), nullable: true },
     MaChuKyHashAdmin: { type: sql.VarChar(500), nullable: true },
-    STT: { type: sql.Int, nullable: true},
+    SoThuTu: { type: sql.Int, nullable: true},
   },
 };
 

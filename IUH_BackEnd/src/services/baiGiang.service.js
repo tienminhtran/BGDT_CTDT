@@ -236,9 +236,9 @@ async function listChiTietByVersion(monHocVersionId) {
         required: false,
       },
     ],
-    // Sắp theo STT chương (số thứ tự), Id ASC làm tie-breaker khi STT trùng/null.
+    // Sắp theo SoThuTu chương (số thứ tự), Id ASC làm tie-breaker khi SoThuTu trùng/null.
     order: [
-      ['STT', 'ASC'],
+      ['SoThuTu', 'ASC'],
       ['Id', 'ASC'],
     ],
   });
@@ -309,8 +309,8 @@ async function listVideos(maMon, version) {
         'version',
         'ASC',
       ],
-      // Sắp theo STT chương (số thứ tự), Id ASC làm tie-breaker khi STT trùng/null.
-      [{ model: ChiTietDangKyBaiGiang, as: 'ChiTiet' }, 'STT', 'ASC'],
+      // Sắp theo SoThuTu chương (số thứ tự), Id ASC làm tie-breaker khi SoThuTu trùng/null.
+      [{ model: ChiTietDangKyBaiGiang, as: 'ChiTiet' }, 'SoThuTu', 'ASC'],
       [{ model: ChiTietDangKyBaiGiang, as: 'ChiTiet' }, 'Id', 'ASC'],
     ],
   });

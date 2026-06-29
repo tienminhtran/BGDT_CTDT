@@ -43,7 +43,7 @@ const ChiTietDangKyBaiGiang = sequelize.define(
     DangKyBaiGiangId: { type: DataTypes.INTEGER },
     NoiDungChuong: { type: DataTypes.STRING(100) },
     GhiChu: { type: DataTypes.TEXT },
-    STT: { type: DataTypes.INTEGER }, // số thứ tự chương (sắp xếp danh sách bài giảng)
+    SoThuTu: { type: DataTypes.INTEGER }, // số thứ tự chương (sắp xếp danh sách bài giảng)
   },
   { tableName: 'tb_ChiTietDangKyBaiGiang' }
 );
