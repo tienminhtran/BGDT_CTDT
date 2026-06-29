@@ -19,5 +19,6 @@ export const ENDPOINTS = {
   reviews: {
     byLecture: (lectureId) => `/reviews/${lectureId}`,
     mine: (lectureId) => `/reviews/${lectureId}/mine`,
+    my: () => '/reviews/my', // tất cả đánh giá của SV đang đăng nhập
   },
 }

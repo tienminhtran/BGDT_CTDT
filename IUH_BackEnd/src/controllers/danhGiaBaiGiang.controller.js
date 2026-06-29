@@ -69,6 +69,19 @@ exports.danhSach = async (req, res, next) => {
   }
 };
 
+// GET /api/reviews/my  (Bearer wstoken)
+// Danh sách TẤT CẢ đánh giá/bình luận của chính SV đang đăng nhập (kèm tên môn + bài giảng).
+exports.cuaToiTatCa = async (req, res, next) => {
+  try {
+    const studentId = await getStudentId(req); // 401 nếu chưa đăng nhập
+    const reviews = await danhGia.getDanhSachDanhGiaCuaSinhVien(studentId);
+    res.json({ reviews });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ message: err.message });
+    next(err);
+  }
+};
+
 // GET /api/reviews/:lectureId/mine  (Bearer wstoken)
 // Lấy đánh giá của chính SV cho bài giảng (để FE prefill form), null nếu chưa có.
 exports.cuaToi = async (req, res, next) => {

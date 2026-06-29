@@ -1,5 +1,12 @@
-const { fn, col, literal } = require('sequelize');
-const { DanhGiaBaiGiang } = require('../models/orm');
+const { fn, col, literal, Op } = require('sequelize');
+const {
+  DanhGiaBaiGiang,
+  BaiGiang,
+  ChiTietDangKyBaiGiang,
+  DangKyBaiGiang,
+  MonhocVersion,
+  Monhoc,
+} = require('../models/orm');
 const baiGiang = require('./baiGiang.service');
 const svhp = require('./sinhVienHocPhan.service');
 
@@ -40,6 +47,98 @@ async function getDanhGiaCuaSinhVien(baiGiangId, mssv) {
     where: { BaiGiangId: baiGiangId, MSSV: mssv },
   });
   return mapReview(row);
+}
+
+/**
+ * Lấy TẤT CẢ đánh giá của 1 SV (mọi bài giảng), kèm tên môn + tên bài giảng để hiển thị.
+ * Đường nối enrich: DanhGiaBaiGiang -> BaiGiang -> ChiTiet -> DangKy -> MonHocVersion -> Monhoc.
+ * Sắp xếp mới nhất trước. Trả mảng (rỗng nếu SV chưa đánh giá gì).
+ *
+ * @param {string} mssv
+ * @returns {Promise<Array<object>>}
+ */
+async function getDanhSachDanhGiaCuaSinhVien(mssv) {
+  const rows = await DanhGiaBaiGiang.findAll({
+    where: { MSSV: mssv },
+    attributes: ['Id', 'BaiGiangId', 'MSSV', 'SoSao', 'BinhLuan', 'NgayDanhGia'],
+    order: [['NgayDanhGia', 'DESC']],
+    include: [
+      {
+        model: BaiGiang,
+        as: 'BaiGiang',
+        attributes: ['Id', 'TenBaiGiang'],
+        required: false,
+        include: [
+          {
+            model: ChiTietDangKyBaiGiang,
+            as: 'ChiTiet',
+            attributes: ['Id'],
+            required: false,
+            include: [
+              {
+                model: DangKyBaiGiang,
+                as: 'DangKy',
+                attributes: ['Id'],
+                required: false,
+                include: [
+                  {
+                    model: MonhocVersion,
+                    as: 'MonHocVersion',
+                    attributes: ['version'],
+                    required: false,
+                    include: [
+                      {
+                        model: Monhoc,
+                        as: 'Monhoc',
+                        attributes: ['ma_tuquan', 'tenmon'],
+                        required: false,
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+
+  // Thống kê tổng hợp (tổng lượt + điểm TB) cho các bài giảng SV đã đánh giá, gộp 1 query
+  // theo BaiGiangId -> tránh FE phải gọi GET /reviews/:lectureId cho từng bài giảng (N+1).
+  const lectureIds = [...new Set(rows.map((r) => r.BaiGiangId))];
+  const statsMap = {};
+  if (lectureIds.length) {
+    const stats = await DanhGiaBaiGiang.findAll({
+      where: { BaiGiangId: { [Op.in]: lectureIds } },
+      attributes: [
+        'BaiGiangId',
+        [fn('COUNT', col('Id')), 'total'],
+        [fn('AVG', literal('CAST(SoSao AS DECIMAL(4,2))')), 'average'],
+      ],
+      group: ['BaiGiangId'],
+      raw: true,
+    });
+    for (const s of stats) {
+      statsMap[s.BaiGiangId] = {
+        total: Number(s.total) || 0,
+        average: s.average ? Number(s.average) : 0,
+      };
+    }
+  }
+
+  return rows.map((r) => {
+    const monhoc = r.BaiGiang?.ChiTiet?.DangKy?.MonHocVersion?.Monhoc;
+    const tk = statsMap[r.BaiGiangId] || { total: 0, average: 0 };
+    return {
+      ...mapReview(r),
+      courseCode: monhoc?.ma_tuquan ?? null,
+      courseName: monhoc?.tenmon ?? null,
+      videoTitle: r.BaiGiang?.TenBaiGiang ?? null,
+      total: tk.total,
+      average: tk.average,
+    };
+  });
 }
 
 /**
@@ -160,6 +259,7 @@ async function getThongKeDanhGia(baiGiangId) {
 module.exports = {
   kiemTraQuyenDanhGia,
   getDanhGiaCuaSinhVien,
+  getDanhSachDanhGiaCuaSinhVien,
   taoDanhGia,
   suaDanhGia,
   getThongKeDanhGia,

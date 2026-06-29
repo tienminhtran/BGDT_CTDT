@@ -14,6 +14,13 @@ export const getDanhGiaCuaToi = async (lectureId) => {
   return data.review
 }
 
+// Danh sách TẤT CẢ đánh giá của SV đang đăng nhập (kèm tên môn + bài giảng). Cần đăng nhập.
+// Trả mảng đã enrich + sort mới nhất trước từ BE.
+export const getDanhGiaCuaSinhVienList = async () => {
+  const { data } = await http.get(ENDPOINTS.reviews.my())
+  return data.reviews
+}
+
 // Tạo mới đánh giá (sao + bình luận). Cần đăng nhập.
 export const taoDanhGia = async (lectureId, { stars, comment }) => {
   const { data } = await http.post(ENDPOINTS.reviews.byLecture(lectureId), { stars, comment })

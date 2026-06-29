@@ -19,7 +19,7 @@ export default function Layout({ user, onLogout, children }) {
     <div className="min-h-screen w-full bg-gray-50">
       {/* Header cố định luôn nằm trên cùng */}
       <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between bg-[#153898] px-4 py-3 text-white shadow-sm">
-        <span className="flex items-center gap-2 font-semibold" onClick={() => window.location.href = '/'}>
+        <span className="flex items-center gap-2 font-semibold cursor-pointer" onClick={() => window.location.href = '/'}>
           <img src={logo} alt="IUH" className="w-28 object-contain" />
         </span>
 

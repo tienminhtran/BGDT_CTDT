@@ -236,7 +236,11 @@ async function listChiTietByVersion(monHocVersionId) {
         required: false,
       },
     ],
-    order: [['Id', 'ASC']],
+    // Sắp theo STT chương (số thứ tự), Id ASC làm tie-breaker khi STT trùng/null.
+    order: [
+      ['STT', 'ASC'],
+      ['Id', 'ASC'],
+    ],
   });
 
   // KHÔNG trả URL MinIO ra client. Chỉ trả cờ có video/HLS (xem trước qua proxy có token).
@@ -305,6 +309,8 @@ async function listVideos(maMon, version) {
         'version',
         'ASC',
       ],
+      // Sắp theo STT chương (số thứ tự), Id ASC làm tie-breaker khi STT trùng/null.
+      [{ model: ChiTietDangKyBaiGiang, as: 'ChiTiet' }, 'STT', 'ASC'],
       [{ model: ChiTietDangKyBaiGiang, as: 'ChiTiet' }, 'Id', 'ASC'],
     ],
   });
