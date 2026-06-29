@@ -33,8 +33,10 @@ export default function Layout({ user, onLogout, children }) {
               <Lightbulb size={15} />
             </button>
 
+            {/* Neo theo cạnh phải MÀN HÌNH (fixed) để không bị tràn/che trên điện thoại,
+                thay vì neo theo nút (absolute) vốn lệch trái khi username dài. */}
             <div
-              className="pointer-events-none absolute right-1 top-full z-50 mt-2 w-[min(15rem,calc(100vw-2rem))] rounded-b-sm bg-amber-600 p-3 text-xs text-amber-50 opacity-0 shadow-lg ring-1 ring-amber-800/50 transition-opacity duration-200 group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100"
+              className="pointer-events-none fixed right-3 top-12 z-50 w-[min(18rem,calc(100vw-1.5rem))] rounded-sm bg-amber-600 p-3 text-xs text-amber-50 opacity-0 shadow-lg ring-1 ring-amber-800/50 transition-opacity duration-200 group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100"
             >
               <strong className="text-amber-200">💡Tips</strong>
               <p className="mt-1 leading-relaxed text-justify">
@@ -42,7 +44,7 @@ export default function Layout({ user, onLogout, children }) {
                 Sau này bạn có thể xem lại trong mục <b className="text-amber-100">Đánh giá của bạn</b>.
               </p>
 
-              {/* Mũi tên, lệch theo phía phải vì tooltip neo bên phải */}
+              {/* Mũi tên chỉ lên, canh gần cạnh phải nơi đặt nút bóng đèn */}
               <div className="absolute -top-1 right-3 h-2 w-2 rotate-45 bg-amber-600"></div>
             </div>
           </div>
