@@ -4,6 +4,10 @@ const app = require('./app');
 const { getPool } = require('./config/db');
 const { ensureBucket } = require('./config/minio');
 
+const result = require('dotenv').config();
+console.log('dotenv result:', result);
+console.log('DB_USER:', process.env.DB_USER);
+
 const PORT = process.env.PORT || 3000;
 
 async function start() {
