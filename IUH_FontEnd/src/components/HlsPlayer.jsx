@@ -10,7 +10,7 @@ const SKIP_SECONDS = 10
  * - Safari/iOS: phát HLS native
  * - Có nút tua lùi / tiến 10s; hạn chế tải video xuống (ẩn download, chặn chuột phải, tắt PiP).
  */
-export default function HlsPlayer({ src, className, poster, watermark, mssv }) {
+export default function HlsPlayer({ src, className, poster, watermark, mssv, onError }) {
   const videoRef = useRef(null)
   const containerRef = useRef(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -80,6 +80,10 @@ export default function HlsPlayer({ src, className, poster, watermark, mssv }) {
       hls.attachMedia(video)
       // Mỗi khi tải xong 1 segment -> nhảy lớp phủ MSSV sang vị trí mới
       if (mssv) hls.on(Hls.Events.FRAG_LOADED, moveWatermark)
+      // Lỗi nghiêm trọng (manifest rỗng/không tải được) -> báo ra ngoài để hiện "Chưa có bài giảng"
+      hls.on(Hls.Events.ERROR, (_evt, data) => {
+        if (data?.fatal) onError?.(data)
+      })
     } else {
       video.src = src // trình duyệt quá cũ: thử phát trực tiếp
     }
@@ -111,6 +115,7 @@ export default function HlsPlayer({ src, className, poster, watermark, mssv }) {
         controlsList="nodownload noplaybackrate noremoteplayback nofullscreen"
         disablePictureInPicture
         onContextMenu={(e) => e.preventDefault()}
+        onError={() => onError?.(videoRef.current?.error)}
       />
 
       {/* Dòng bản quyền phủ trên video — nền đen làm nổi chữ, hiện cả khi fullscreen */}

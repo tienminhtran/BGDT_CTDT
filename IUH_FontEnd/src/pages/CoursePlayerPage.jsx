@@ -277,14 +277,17 @@ export default function CoursePlayerPage() {
 
   // Lấy token phát HLS qua backend (bucket private) cho video đang chọn
   const [playSrc, setPlaySrc] = useState(null)
+  // Lỗi phát (manifest rỗng / stream chưa sẵn sàng) -> hiện "Chưa có bài giảng"
+  const [playError, setPlayError] = useState(false)
   useEffect(() => {
     let alive = true
     setPlaySrc(null)
+    setPlayError(false)
     if (!active?.baiGiangId || !active?.coHls) return
     baiGiangService
       .getPlaybackToken(active.baiGiangId)
       .then((url) => alive && setPlaySrc(url))
-      .catch(() => alive && setPlaySrc(null))
+      .catch(() => alive && setPlayError(true))
     return () => {
       alive = false
     }
@@ -345,13 +348,14 @@ export default function CoursePlayerPage() {
             {/* Khung video 16:9 cố định, giới hạn chiều cao để không phình quá to */}
             <div className="mx-auto w-full max-w-[1100px]">
               <div className="relative aspect-video w-full overflow-hidden bg-black shadow-sm">
-                {playSrc ? (
+                {playSrc && !playError ? (
                   <HlsPlayer
                     key={active.baiGiangId}
                     src={playSrc}
                     className="h-full w-full"
                     watermark="Đây là bài giảng điện tử thuộc bản quyền Đại học Công nghiệp Thành Phố Hồ Chí Minh"
                     mssv={user?.username}
+                    onError={() => setPlayError(true)}
                   />
                 ) : (
                   <div className="flex h-full w-full flex-col items-center justify-center text-white/80">
@@ -359,9 +363,9 @@ export default function CoursePlayerPage() {
                     <p className="mt-3 text-sm">
                       {videos.loading
                         ? 'Đang tải video...'
-                        : active?.coHls
-                          ? 'Đang chuẩn bị trình phát...'
-                          : 'Chưa có bài giảng'}
+                        : playError || !active?.coHls
+                          ? 'Chưa có bài giảng'
+                          : 'Đang chuẩn bị trình phát...'}
                     </p>
                   </div>
                 )}
