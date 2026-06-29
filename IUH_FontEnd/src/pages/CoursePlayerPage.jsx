@@ -361,9 +361,7 @@ export default function CoursePlayerPage() {
                         ? 'Đang tải video...'
                         : active?.coHls
                           ? 'Đang chuẩn bị trình phát...'
-                          : active
-                            ? 'Bài giảng chưa có bản phát (HLS)'
-                            : 'Chưa có video bài giảng'}
+                          : 'Chưa có bài giảng'}
                     </p>
                   </div>
                 )}
