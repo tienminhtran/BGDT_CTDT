@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { Star } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Star, Loader2 } from 'lucide-react'
 import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { getDanhGiaCuaSinhVienList } from '../services/danhGiaService'
+import { createCourseToken } from '../services/baiGiangService'
+import { buildCoursePlayerPath } from '../constants/routes'
 
 // Format thời gian kiểu "1h trước" cho mốc gần, "HH:mm dd/MM" cho mốc xa hơn — giống UI mẫu
 function formatRelativeTime(isoString) {
@@ -63,10 +66,15 @@ function CourseAvatar({ courseName, courseCode }) {
 
 export default function MyFeedback() {
   const { user, logout } = useAuth()
+  const navigate = useNavigate()
 
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  // lectureId đang mở (để hiện spinner trên đúng nút), '' nếu không có.
+  const [openingId, setOpeningId] = useState(null)
+  const [openError, setOpenError] = useState('')
 
   // Chặn StrictMode (dev) chạy effect 2 lần -> tránh gọi API lặp.
   const fetchedRef = useRef(false)
@@ -84,7 +92,9 @@ export default function MyFeedback() {
         const mapped = (reviews || []).map((r) => ({
           lectureId: r.lectureId,
           courseCode: r.courseCode || String(r.lectureId ?? ''),
+          rawCourseCode: r.courseCode || null, // ma_tuquan thật để tạo token (null nếu thiếu liên kết)
           courseName: r.courseName || 'Bài giảng',
+          version: r.version || null,
           videoTitle: r.videoTitle || '',
           rating: r.stars,
           comment: r.comment,
@@ -109,6 +119,24 @@ export default function MyFeedback() {
     (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
   )
 
+  // Mở trang xem đúng bài giảng: tạo token mờ (courseCode + version) rồi điều hướng kèm ?bg=<lectureId>.
+  const xemBaiGiang = async (item) => {
+    if (!item.rawCourseCode || !item.version) {
+      setOpenError('Bài giảng này thiếu thông tin môn/phiên bản, không mở được.')
+      return
+    }
+    setOpenError('')
+    setOpeningId(item.lectureId)
+    try {
+      const token = await createCourseToken(item.rawCourseCode, item.version)
+      navigate(`${buildCoursePlayerPath(token)}?bg=${item.lectureId}`)
+    } catch (err) {
+      setOpenError(err?.response?.data?.message || 'Không mở được bài giảng. Vui lòng thử lại.')
+    } finally {
+      setOpeningId(null)
+    }
+  }
+
   return (
     <Layout user={user} onLogout={logout}>
       <main className="mx-auto w-full max-w-3xl px-6 py-6">
@@ -117,6 +145,9 @@ export default function MyFeedback() {
           <p className="mt-1 text-sm text-gray-500">
             Danh sách bình luận và đánh giá bạn đã gửi cho các bài giảng.
           </p>
+          {openError && (
+            <p className="mt-2 text-sm text-rose-600">{openError}</p>
+          )}
         </div>
 
         <div className="mt-5 divide-y divide-gray-100 border border-gray-200 bg-white shadow-sm">
@@ -135,7 +166,10 @@ export default function MyFeedback() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-gray-900 cursor-pointer hover:underline" onClick={() => window.location.href = `/bai-giang/${item.lectureId}`}>
+                    <p
+                      className="truncate text-sm font-medium text-gray-900 cursor-pointer hover:underline"
+                      onClick={() => xemBaiGiang(item)}
+                    >
                       {item.courseName}
                     </p>
                     <p className="mt-0.5 truncate text-xs text-gray-500">
@@ -148,14 +182,14 @@ export default function MyFeedback() {
                     <StarRating value={item.rating} />
                     {item.average != null && (
                       <span className="text-[11px] text-gray-400">
-                        TB {Number(item.average).toFixed(1)} · {item.total} lượt
+                         {Number(item.average).toFixed(1)} · {item.total} lượt
                       </span>
                     )}
                   </div>
                 </div>
 
                 <p className="mt-2 text-xs text-gray-400">
-                  {formatRelativeTime(item.createdAt)}
+                 Thời gian đánh giá: {formatRelativeTime(item.createdAt)}
                 </p>
 
                 <p className="mt-2 text-sm text-gray-700">
@@ -168,8 +202,13 @@ export default function MyFeedback() {
 
                 <button
                   type="button"
-                  className="mt-2 inline-flex items-center gap-1 text-xs text-gray-400 cursor-pointer underline-offset-2 hover:text-gray-600 hover:underline"
+                  onClick={() => xemBaiGiang(item)}
+                  disabled={openingId === item.lectureId}
+                  className="mt-2 inline-flex items-center gap-1 text-xs text-gray-400 cursor-pointer underline-offset-2 hover:text-gray-600 hover:underline disabled:opacity-60"
                 >
+                  {openingId === item.lectureId && (
+                    <Loader2 size={12} className="animate-spin" />
+                  )}
                   Xem bài giảng
                 </button>
               </div>

@@ -128,12 +128,14 @@ async function getDanhSachDanhGiaCuaSinhVien(mssv) {
   }
 
   return rows.map((r) => {
-    const monhoc = r.BaiGiang?.ChiTiet?.DangKy?.MonHocVersion?.Monhoc;
+    const monHocVersion = r.BaiGiang?.ChiTiet?.DangKy?.MonHocVersion;
+    const monhoc = monHocVersion?.Monhoc;
     const tk = statsMap[r.BaiGiangId] || { total: 0, average: 0 };
     return {
       ...mapReview(r),
       courseCode: monhoc?.ma_tuquan ?? null,
       courseName: monhoc?.tenmon ?? null,
+      version: monHocVersion?.version ?? null, // cần để FE tạo token mờ mở trang xem bài giảng
       videoTitle: r.BaiGiang?.TenBaiGiang ?? null,
       total: tk.total,
       average: tk.average,

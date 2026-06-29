@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, PlayCircle, Loader2, Lock, Star, MessageSquare, Send } from 'lucide-react'
 import Layout from '../components/Layout'
 import HlsPlayer from '../components/HlsPlayer'
@@ -209,6 +209,9 @@ export default function CoursePlayerPage() {
   // Token mờ do backend cấp; client KHÔNG giải được mã môn từ đây.
   const { token } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  // Bài giảng cần mở sẵn (điều hướng từ trang "Đánh giá của bạn"): ?bg=<baiGiangId>
+  const wantBaiGiangId = Number(searchParams.get('bg')) || null
   const [activeId, setActiveId] = useState(null)
 
   // Kiểm tra SV có quyền học khóa này không (backend giải token)
@@ -260,6 +263,14 @@ export default function CoursePlayerPage() {
       alive = false
     }
   }, [token])
+
+  // Khi có ?bg=<baiGiangId> (điều hướng từ trang đánh giá) và danh sách đã tải:
+  // mở đúng bài giảng đó nếu nó nằm trong danh sách.
+  useEffect(() => {
+    if (!wantBaiGiangId || !videos.items.length) return
+    const wanted = videos.items.find((v) => v.baiGiangId === wantBaiGiangId)
+    if (wanted) setActiveId(wanted.baiGiangId)
+  }, [wantBaiGiangId, videos.items])
 
   const list = videos.items
   const active = list.find((v) => v.baiGiangId === activeId) ?? list[0] ?? null
