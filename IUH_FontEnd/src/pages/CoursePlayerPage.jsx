@@ -392,8 +392,8 @@ export default function CoursePlayerPage() {
               </div>
 
               <div className="mt-4 rounded-xl border-slate-200 bg-gray-200 p-4 text-sm leading-relaxed text-slate-600">
-                <h2 className="mb-2 font-semibold text-slate-800">Mô tả bài học</h2>
-                {active?.noiDungChuong || 'Sinh viên theo dõi video bên trên và chuyển bài bằng danh sách bên phải.'}
+                <h2 className="mb-2 font-semibold text-slate-800">Nội dung bài giảng</h2>
+                {active?.noiDungBaiGiang || 'Sinh viên theo dõi video bên trên và chuyển bài bằng danh sách bên phải.'}
               </div>
 
               {/* Bình luận + đánh giá sao (tương tác) */}

@@ -11,6 +11,7 @@ const BaiGiang = {
       references: { table: 'tb_ChiTietDangKyBaiGiang', column: 'Id' },
     },
     TenBaiGiang: { type: sql.NVarChar(255), nullable: true },
+    NoiDungBaiGiang: { type: sql.NVarChar(sql.MAX), nullable: true },
     LinkBaiGiang: { type: sql.VarChar(500), nullable: true },
     TongDiemSo: { type: sql.Decimal(5, 2), nullable: true, default: 0.0 },
     DatNguongDiem: { type: sql.Bit, nullable: true, default: 1 },

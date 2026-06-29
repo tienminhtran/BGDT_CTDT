@@ -265,7 +265,7 @@ async function listVideos(maMon, version) {
   const versionWhere = version ? { version } : undefined;
 
   const rows = await BaiGiang.findAll({
-    attributes: ['Id', 'TenBaiGiang', 'LinkBaiGiang', 'LinkChunkBaiGiang'],
+    attributes: ['Id', 'TenBaiGiang', 'NoiDungBaiGiang', 'LinkBaiGiang', 'LinkChunkBaiGiang'],
     where: { LinkBaiGiang: { [Op.ne]: null } },
     include: [
       {
@@ -320,6 +320,7 @@ async function listVideos(maMon, version) {
     baiGiangId: bg.Id,
     chiTietId: bg.ChiTiet.Id,
     noiDungChuong: bg.ChiTiet.NoiDungChuong,
+    noiDungBaiGiang: bg.NoiDungBaiGiang,
     tenBaiGiang: bg.TenBaiGiang,
     version: bg.ChiTiet.DangKy.MonHocVersion.version,
     coVideo: !!bg.LinkBaiGiang,
@@ -338,7 +339,7 @@ async function listVideos(maMon, version) {
  */
 async function getBaiGiangById(idBaiGiang) {
   const bg = await BaiGiang.findByPk(idBaiGiang, {
-    attributes: ['Id', 'TenBaiGiang', 'LinkBaiGiang', 'LinkChunkBaiGiang'],
+    attributes: ['Id', 'TenBaiGiang', 'NoiDungBaiGiang', 'LinkBaiGiang', 'LinkChunkBaiGiang'],
     include: [
       {
         model: ChiTietDangKyBaiGiang,
@@ -380,6 +381,7 @@ async function getBaiGiangById(idBaiGiang) {
     chiTietId: bg.ChiTiet.Id,
     tenBaiGiang: bg.TenBaiGiang,
     noiDungChuong: bg.ChiTiet.NoiDungChuong,
+    noiDungBaiGiang: bg.NoiDungBaiGiang,
     subjectName: mv.Monhoc.tenmon,
     version: mv.version,
     coVideo: !!bg.LinkBaiGiang,

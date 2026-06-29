@@ -215,7 +215,7 @@ export default function CoursePlayerPage() {
               ) : null}
 
               <div className="mt-4 rounded-xl border-slate-200 bg-gray-200 p-4 text-sm leading-relaxed text-slate-600">
-                <h2 className="mb-2 font-semibold text-slate-800">Mô tả bài học</h2>
+                <h2 className="mb-2 font-semibold text-slate-800">Nội dung bài giảng</h2>
                 {active?.noiDungChuong || 'Chọn bài giảng ở danh sách bên phải để xem video.'}
               </div>
             </div>

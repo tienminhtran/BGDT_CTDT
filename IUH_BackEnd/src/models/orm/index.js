@@ -54,6 +54,7 @@ const BaiGiang = sequelize.define(
     Id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     ChiTietDangKyBaiGiangId: { type: DataTypes.INTEGER },
     TenBaiGiang: { type: DataTypes.STRING(255) },
+    NoiDungBaiGiang: { type: DataTypes.TEXT },
     LinkBaiGiang: { type: DataTypes.STRING(500) },
     LinkChunkBaiGiang: { type: DataTypes.TEXT },
   },
