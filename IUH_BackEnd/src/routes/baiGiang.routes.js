@@ -26,14 +26,19 @@ router.get('/:id/teacher', controller.getBaiGiangTeacher);
 // GET /api/lectures/:id/hls/:file?token=  -> stream HLS qua backend (bucket private)
 router.get('/:id/hls/:file', controller.streamHls);
 
+// GET /api/lectures/:id/upload-status  (Header: x-api-key)
+// Kiểm tra trạng thái stream/chunk trước khi upload (empty | processing | completed).
+router.get('/:id/upload-status', apiKey, controller.uploadStatus);
+
 // POST /api/lectures/:id/video
 // Header: x-api-key=<UPLOAD_API_KEY>  (bảo vệ endpoint upload)
 // form-data: video=<file>  -> upload lên MinIO theo [ma_tuquan]/[version]/[Id]/{stream,chunk}
 router.post('/:id/video', apiKey, controller.uploadMiddleware, controller.uploadVideo);
 
 
-// đang viết
-// xóa video bài giảng (truyền paramater id bài giảng, paramater(KEY_LOGIN_TEACHER: đúng mới xóa)
-router.delete('/:id/:key/video', apiKey, controller.deleteVideo);
+// DELETE /api/lectures/:id/video
+// Header: x-api-key=<UPLOAD_API_KEY> + x-teacher-key=<KEY_LOGIN_TEACHER>
+// Xóa video bài giảng theo id: dọn stream/ + chunk/ trên MinIO và xóa link trong DB.
+router.delete('/:id/video', apiKey, controller.deleteVideo);
 
 module.exports = router;

@@ -132,6 +132,83 @@ function transcodeToHls(inputPath, outDir) {
   });
 }
 
+// Liệt kê tên các object dưới 1 prefix trên MinIO (đệ quy).
+async function listObjectNames(prefix) {
+  const names = [];
+  const stream = minioClient.listObjectsV2(BUCKET, `${prefix}/`, true);
+  for await (const obj of stream) {
+    if (obj.name) names.push(obj.name);
+  }
+  return names;
+}
+
+/**
+ * Xác định trạng thái lưu trữ của 1 bài giảng theo prefix [ma_tuquan]/[version]/[idChiTiet].
+ * Dựa trên nội dung 2 thư mục con stream/ và chunk/:
+ *   - 'completed'  : stream có video + chunk có index.m3u8 và >=1 segment .ts
+ *                    -> đã upload & xử lý xong, KHÔNG cho upload nữa.
+ *   - 'processing' : stream đã có video nhưng chunk chưa tạo xong (thiếu m3u8 hoặc .ts)
+ *                    -> video đang xử lý, KHÔNG cho upload.
+ *   - 'empty'      : chưa có stream lẫn chunk -> CHO PHÉP upload.
+ * @returns {Promise<{ canUpload:boolean, status:string, message:string, coStream:boolean, coChunk:boolean }>}
+ */
+async function trangThaiUploadTheoPrefix(prefix) {
+  const [streamFiles, chunkFiles] = await Promise.all([
+    listObjectNames(`${prefix}/stream`),
+    listObjectNames(`${prefix}/chunk`),
+  ]);
+
+  const coStream = streamFiles.length > 0;
+  const coM3u8 = chunkFiles.some((n) => n.toLowerCase().endsWith('.m3u8'));
+  const coSegment = chunkFiles.some((n) => n.toLowerCase().endsWith('.ts'));
+  const chunkHoanThanh = coM3u8 && coSegment;
+
+  // 1) Đã có video stream + chunk hoàn chỉnh -> đã upload xong
+  if (coStream && chunkHoanThanh) {
+    return {
+      canUpload: false,
+      status: 'completed',
+      message: 'Bài giảng đã có video, không thể upload thêm',
+      coStream: true,
+      coChunk: true,
+    };
+  }
+
+  // 2) Đã có video stream nhưng chunk chưa tạo xong -> đang xử lý
+  if (coStream) {
+    return {
+      canUpload: false,
+      status: 'processing',
+      message: 'Video đang xử lý, vui lòng thử lại sau',
+      coStream: true,
+      coChunk: false,
+    };
+  }
+
+  // 3) Chưa có gì -> cho phép upload
+  return {
+    canUpload: true,
+    status: 'empty',
+    message: 'Chưa có video, có thể upload',
+    coStream: false,
+    coChunk: false,
+  };
+}
+
+/**
+ * Kiểm tra trạng thái thư mục lưu trữ của 1 bài giảng trước khi upload video.
+ * Dùng cho client check trước (GET) và cho chính uploadVideoBaiGiang chặn upload.
+ * @param {number} idBaiGiang
+ * @returns {Promise<{ canUpload, status, message, prefix, coStream, coChunk }>}
+ */
+async function kiemTraTrangThaiUpload(idBaiGiang) {
+  await ensureBucket();
+  const viTri = await getViTriBaiGiang(idBaiGiang);
+  const prefix = `${sanitizeSegment(viTri.maTuQuan)}/${sanitizeSegment(viTri.version)}/${viTri.chiTietId}`;
+  const trangThai = await trangThaiUploadTheoPrefix(prefix);
+  return { ...trangThai, prefix };
+}
+
 // Upload 1 file lên MinIO, trả về object key (đường dẫn tương đối) đã lưu.
 async function uploadFile(objectName, filePath) {
   await minioClient.fPutObject(BUCKET, objectName, filePath, {
@@ -172,6 +249,15 @@ async function uploadVideoBaiGiang(idBaiGiang, file) {
 
   // Thư mục cấp 3 = id chi tiết đăng ký bài giảng (idChiTiet)
   const prefix = `${sanitizeSegment(viTri.maTuQuan)}/${sanitizeSegment(viTri.version)}/${viTri.chiTietId}`;
+
+  // 0) Kiểm tra trạng thái thư mục: đã có video / đang xử lý -> chặn upload.
+  const trangThai = await trangThaiUploadTheoPrefix(prefix);
+  if (!trangThai.canUpload) {
+    const err = new Error(trangThai.message);
+    err.status = 409; // Conflict: bài giảng đã có video hoặc đang xử lý
+    err.trangThai = trangThai.status;
+    throw err;
+  }
 
   // 1) Upload video gốc vào stream/ -> lưu object key
   const ext = path.extname(file.originalname || '') || '.mp4';
@@ -506,19 +592,13 @@ async function deleteVideo(idBaiGiang, teacherKey) {
     err.status = 404;
     throw err;
   }
-  // Xử lý xóa video ở đây (ví dụ: xóa từ MinIO, cập nhật cơ sở dữ liệu, v.v.) , xóa chunk luôn
-  const objectKeysToDelete = [];
-  if (bg.LinkBaiGiang) {
-    objectKeysToDelete.push(toObjectKey(bg.LinkBaiGiang));
-  }
-  if (bg.LinkChunkBaiGiang) {
-    const chunkDir = path.posix.dirname(toObjectKey(bg.LinkChunkBaiGiang));
-    // Xóa tất cả các file trong thư mục chunk
-    const listObjects = await minioClient.listObjectsV2(BUCKET, chunkDir, true);
-    for await (const obj of listObjects) {
-      objectKeysToDelete.push(obj.name);
-    }
-  }
+
+  // Xóa TOÀN BỘ thư mục lưu trữ của bài giảng trên MinIO (cả stream/ lẫn chunk/),
+  // không chỉ dựa vào link trong DB -> dọn sạch cả khi upload dang dở (đang xử lý).
+  await ensureBucket();
+  const viTri = await getViTriBaiGiang(idBaiGiang);
+  const prefix = `${sanitizeSegment(viTri.maTuQuan)}/${sanitizeSegment(viTri.version)}/${viTri.chiTietId}`;
+  const objectKeysToDelete = await listObjectNames(prefix);
 
   if (objectKeysToDelete.length > 0) {
     await minioClient.removeObjects(BUCKET, objectKeysToDelete);
@@ -535,10 +615,12 @@ async function deleteVideo(idBaiGiang, teacherKey) {
 
 module.exports = {
   getViTriBaiGiang,
+  kiemTraTrangThaiUpload,
   uploadVideoBaiGiang,
   listVideos,
   listChiTietByVersion,
   getBaiGiangById,
   getOrCreateBaiGiang,
   streamHls,
+  deleteVideo,
 };
