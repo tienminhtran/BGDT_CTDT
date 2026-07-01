@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { RotateCcw, RotateCw, Maximize, Minimize } from 'lucide-react'
+import { RotateCcw, RotateCw, Maximize, Minimize, Play, Pause } from 'lucide-react'
 import Hls from 'hls.js'
 
 const SKIP_SECONDS = 10
@@ -14,6 +14,7 @@ export default function HlsPlayer({ src, className, poster, watermark, mssv, onE
   const videoRef = useRef(null)
   const containerRef = useRef(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
   // Vị trí lớp phủ MSSV (đổi mỗi khi tải 1 segment -> chống quay màn hình).
   const [wmPos, setWmPos] = useState({ top: 12, left: 12 })
 
@@ -95,6 +96,28 @@ export default function HlsPlayer({ src, className, poster, watermark, mssv, onE
     }
   }, [src, mssv])
 
+  // Theo dõi play/pause để đổi icon nút giữa
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    const onPlay = () => setIsPlaying(true)
+    const onPause = () => setIsPlaying(false)
+    video.addEventListener('play', onPlay)
+    video.addEventListener('pause', onPause)
+    return () => {
+      video.removeEventListener('play', onPlay)
+      video.removeEventListener('pause', onPause)
+    }
+  }, [])
+
+  // Bật/tắt phát
+  const togglePlay = () => {
+    const video = videoRef.current
+    if (!video) return
+    if (video.paused) video.play()
+    else video.pause()
+  }
+
   // Tua tương đối (giây), kẹp trong [0, duration]
   const seekBy = (delta) => {
     const video = videoRef.current
@@ -138,25 +161,33 @@ export default function HlsPlayer({ src, className, poster, watermark, mssv, onE
         </span>
       ) : null}
 
-      {/* Nút tua lùi / tiến 10s (đặt phía trên thanh điều khiển native) */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-14 flex items-center justify-center gap-6">
+      {/* Nút tua lùi / tiến 10s — canh giữa màn hình, hai bên tâm như YouTube */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-16 sm:gap-24">
         <button
           type="button"
           onClick={() => seekBy(-SKIP_SECONDS)}
           aria-label={`Tua lùi ${SKIP_SECONDS} giây`}
-          className="pointer-events-auto flex items-center gap-1 rounded-full bg-black/45 px-3 py-2 text-xs font-semibold text-white opacity-0 transition hover:bg-black/65 group-hover:opacity-100"
+          className="pointer-events-auto flex h-14 w-14 flex-col items-center justify-center rounded-full bg-black/45 text-white opacity-0 transition hover:bg-black/65 group-hover:opacity-100"
         >
-          <RotateCcw size={18} />
-          {SKIP_SECONDS}
+          <RotateCcw size={22} />
+          <span className="text-[10px] font-semibold leading-none">{SKIP_SECONDS}</span>
+        </button>
+        <button
+          type="button"
+          onClick={togglePlay}
+          aria-label={isPlaying ? 'Tạm dừng' : 'Phát'}
+          className="pointer-events-auto flex h-16 w-16 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition hover:bg-black/70 group-hover:opacity-100"
+        >
+          {isPlaying ? <Pause size={30} /> : <Play size={30} className="ml-0.5" />}
         </button>
         <button
           type="button"
           onClick={() => seekBy(SKIP_SECONDS)}
           aria-label={`Tua tiến ${SKIP_SECONDS} giây`}
-          className="pointer-events-auto flex items-center gap-1 rounded-full bg-black/45 px-3 py-2 text-xs font-semibold text-white opacity-0 transition hover:bg-black/65 group-hover:opacity-100"
+          className="pointer-events-auto flex h-14 w-14 flex-col items-center justify-center rounded-full bg-black/45 text-white opacity-0 transition hover:bg-black/65 group-hover:opacity-100"
         >
-          <RotateCw size={18} />
-          {SKIP_SECONDS}
+          <RotateCw size={22} />
+          <span className="text-[10px] font-semibold leading-none">{SKIP_SECONDS}</span>
         </button>
       </div>
 
