@@ -30,6 +30,7 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(() => {
     clearLogoutTimer()
+    authService.logout() // xóa cookie phiên sid phía server (fire-and-forget)
     localStorage.removeItem(STORAGE_KEYS.token)
     localStorage.removeItem(STORAGE_KEYS.loginAt)
     setUser(null)

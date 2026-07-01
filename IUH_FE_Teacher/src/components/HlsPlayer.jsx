@@ -91,6 +91,7 @@ export default function HlsPlayer({
         maxBufferHole: 0.5, // khi seek, bỏ qua các segment cũ
         xhrSetup: (xhr) => {
           xhr.timeout = 10000 // abort request treo sau 10s
+          xhr.withCredentials = true // gửi cookie HttpOnly để xác thực từng .m3u8/.ts
         },
       })
       hls.loadSource(src)

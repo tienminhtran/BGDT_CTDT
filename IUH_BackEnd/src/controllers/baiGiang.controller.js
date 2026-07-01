@@ -6,9 +6,42 @@ const jwt = require('jsonwebtoken');
 
 const baiGiang = require('../services/baiGiang.service');
 const moodle = require('../services/moodle.service');
+const svhp = require('../services/sinhVienHocPhan.service');
 const { encodeCourse, decodeCourse } = require('../utils/courseToken');
+const { setSid, readSid } = require('../utils/sessionCookie');
 
-const HLS_TOKEN_TTL = process.env.HLS_TOKEN_TTL || '6h';
+// Danh tính ảo cho giảng viên (app dùng x-teacher-key, không đăng nhập LMS).
+const TEACHER_SUBJECT = '__TEACHER__';
+
+// TTL token phát HLS. Ngắn để hạn chế cửa sổ rò rỉ, nhưng đủ dài để xem hết 1 bài giảng.
+// Nếu bài giảng dài hơn TTL và xem liên tục, tăng qua env HLS_TOKEN_TTL (vd '3h').
+const HLS_TOKEN_TTL = process.env.HLS_TOKEN_TTL || '2h';
+
+// Đặt token phát vào cookie HttpOnly (KHÔNG nằm trên URL) -> copy link không xem được.
+// Scope theo path bài giảng: cookie chỉ được gửi cho đúng endpoint HLS của bài giảng đó.
+function setHlsCookie(res, id, token) {
+  const exp = jwt.decode(token)?.exp; // giây; đặt maxAge cookie khớp hạn token
+  const maxAge = exp ? Math.max(0, exp * 1000 - Date.now()) : undefined;
+  res.cookie(`hls_${id}`, token, {
+    httpOnly: true,          // JS trang không đọc được -> khó trích xuất/chia sẻ
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production', // dev http vẫn gửi được
+    path: `/api/lectures/${id}/hls`,
+    maxAge,
+  });
+}
+
+// Đọc token phát từ cookie HttpOnly (không cần cookie-parser).
+function readHlsCookie(req, id) {
+  const raw = req.headers.cookie;
+  if (!raw) return null;
+  const name = `hls_${id}=`;
+  for (const part of raw.split(';')) {
+    const c = part.trim();
+    if (c.startsWith(name)) return decodeURIComponent(c.slice(name.length));
+  }
+  return null;
+}
 
 // Lưu file tạm ra ổ đĩa (cần đường dẫn file cho ffmpeg đọc), xử lý xong sẽ xóa.
 const storage = multer.diskStorage({
@@ -67,19 +100,42 @@ exports.playbackToken = async (req, res, next) => {
     const isTeacher =
       !!process.env.KEY_LOGIN_TEACHER && teacherKey === process.env.KEY_LOGIN_TEACHER;
 
-    if (!isTeacher) {
+    let viewer; // danh tính sẽ ghi vào vé phát (để streamHls đối chiếu với cookie phiên)
+    if (isTeacher) {
+      viewer = TEACHER_SUBJECT;
+    } else {
+      // 1) Phải đăng nhập LMS (token hợp lệ).
       const header = req.headers.authorization || '';
       const wstoken = header.startsWith('Bearer ') ? header.slice(7) : null;
       if (!wstoken) return res.status(401).json({ message: 'Chưa đăng nhập' });
-      await moodle.getSiteInfo(wstoken); // ném 401 nếu token LMS hết hạn
+      const info = await moodle.getSiteInfo(wstoken); // ném 401 nếu token LMS hết hạn
+
+      // Ghi danh tính hiện tại vào cookie phiên NGAY (kể cả trước khi kiểm quyền): nếu SV này
+      // không có quyền, sid vẫn được cập nhật -> vé cũ của tài khoản khác trong browser vô hiệu.
+      setSid(res, info.username);
+
+      // 2) Phải thuộc học phần chứa môn của chính bài giảng này (chống gọi thẳng API).
+      //    maTuQuan của bài giảng = MaMon dùng để đối chiếu tb_SinhVienHocPhan.
+      const viTri = await baiGiang.getViTriBaiGiang(id); // ném 404 nếu bài giảng không tồn tại
+      const { allowed } = await svhp.kiemTraSinhVienHocMon(info.username, viTri.maTuQuan);
+      if (!allowed) {
+        return res
+          .status(403)
+          .json({ message: 'Bạn không có quyền xem bài giảng của môn học này' });
+      }
+      viewer = info.username;
     }
 
-    const token = jwt.sign({ bg: id }, process.env.JWT_SECRET, {
+    if (isTeacher) setSid(res, viewer);
+    // Vé phát gắn cả bài giảng (bg) lẫn người xem (mssv) -> streamHls chặn dùng vé chéo tài khoản.
+    const token = jwt.sign({ bg: id, mssv: viewer }, process.env.JWT_SECRET, {
       expiresIn: HLS_TOKEN_TTL,
     });
-    res.json({ token, url: `/api/lectures/${id}/hls/index.m3u8?token=${token}` });
+    setHlsCookie(res, id, token);
+    // URL KHÔNG kèm token -> xác thực bằng cookie HttpOnly, copy link cho người ngoài sẽ 401.
+    res.json({ url: `/api/lectures/${id}/hls/index.m3u8` });
   } catch (err) {
-    if (err.status === 401) return res.status(401).json({ message: err.message });
+    if (err.status) return res.status(err.status).json({ message: err.message });
     next(err);
   }
 };
@@ -105,11 +161,15 @@ exports.getBaiGiangTeacher = async (req, res, next) => {
     let token = null;
     let url = null;
     if (info.coHls) {
-      token = jwt.sign({ bg: id }, process.env.JWT_SECRET, { expiresIn: HLS_TOKEN_TTL });
-      url = `/api/lectures/${id}/hls/index.m3u8?token=${token}`;
+      setSid(res, TEACHER_SUBJECT); // gắn danh tính giảng viên vào cookie phiên
+      token = jwt.sign({ bg: id, mssv: TEACHER_SUBJECT }, process.env.JWT_SECRET, {
+        expiresIn: HLS_TOKEN_TTL,
+      });
+      setHlsCookie(res, id, token);
+      url = `/api/lectures/${id}/hls/index.m3u8`; // token nằm ở cookie, không trên URL
     }
 
-    res.json({ ...info, token, url });
+    res.json({ ...info, url });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ message: err.message });
     next(err);
@@ -121,7 +181,8 @@ exports.getBaiGiangTeacher = async (req, res, next) => {
 exports.streamHls = async (req, res, next) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const token = req.query.token;
+    // Vé phát chỉ nằm ở cookie HttpOnly (không nhận qua URL -> không copy/paste được).
+    const token = readHlsCookie(req, id);
     if (!token) return res.status(401).json({ message: 'Thiếu token' });
 
     let payload;
@@ -134,7 +195,14 @@ exports.streamHls = async (req, res, next) => {
       return res.status(403).json({ message: 'Token không khớp bài giảng' });
     }
 
-    await baiGiang.streamHls(id, req.params.file, token, res);
+    // Đối chiếu danh tính: vé này cấp cho ai (payload.mssv) phải trùng người ĐANG đăng nhập
+    // trong browser (cookie sid). Chặn dùng vé còn sót của tài khoản khác trong cùng trình duyệt.
+    const sid = readSid(req);
+    if (!sid || sid !== payload.mssv) {
+      return res.status(401).json({ message: 'Phiên không khớp, vui lòng đăng nhập lại' });
+    }
+
+    await baiGiang.streamHls(id, req.params.file, res);
   } catch (err) {
     if (err.status) return res.status(err.status).json({ message: err.message });
     next(err);

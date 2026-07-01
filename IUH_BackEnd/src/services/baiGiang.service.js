@@ -520,11 +520,11 @@ async function getChunkDir(idBaiGiang) {
 
 /**
  * Stream 1 file HLS (index.m3u8 hoặc seg_xxx.ts) của bài giảng từ MinIO ra response.
- * - .m3u8: đọc & viết lại để mỗi segment kèm ?token= (giữ xác thực cho từng .ts)
+ * - .m3u8: stream thẳng; các segment (seg_xxx.ts) cùng path với playlist nên được
+ *          xác thực bằng cookie HttpOnly (không nhúng token vào URL playlist nữa).
  * - .ts  : stream thẳng
- * @param {string} token  token đã xác thực ở controller (gắn lại vào playlist)
  */
-async function streamHls(idBaiGiang, fileName, token, res) {
+async function streamHls(idBaiGiang, fileName, res) {
   // Chặn path traversal: chỉ cho tên file an toàn, đuôi .ts hoặc .m3u8
   if (!/^[\w.\-]+\.(ts|m3u8)$/i.test(fileName)) {
     const err = new Error('Tên file không hợp lệ');
@@ -547,17 +547,9 @@ async function streamHls(idBaiGiang, fileName, token, res) {
   if (fileName.toLowerCase().endsWith('.m3u8')) {
     const chunks = [];
     for await (const c of stream) chunks.push(c);
-    let text = Buffer.concat(chunks).toString('utf8');
-    // Gắn token vào từng dòng segment (dòng không bắt đầu bằng '#', không rỗng)
-    text = text
-      .split('\n')
-      .map((line) => {
-        const t = line.trim();
-        if (!t || t.startsWith('#')) return line;
-        const sep = t.includes('?') ? '&' : '?';
-        return `${t}${sep}token=${token}`;
-      })
-      .join('\n');
+    const text = Buffer.concat(chunks).toString('utf8');
+    // Không nhúng token vào URL segment: mỗi seg_xxx.ts cùng path với playlist nên
+    // trình duyệt tự gửi cookie HttpOnly khi tải -> giữ xác thực mà không lộ token.
     res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
     res.setHeader('Cache-Control', 'no-store');
     return res.send(text);

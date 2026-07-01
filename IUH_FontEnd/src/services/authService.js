@@ -12,3 +12,12 @@ export const getCurrentUser = async () => {
   const { data } = await http.get(ENDPOINTS.auth.me)
   return data.user
 }
+
+// Xóa cookie phiên (sid) phía server. Gọi khi đăng xuất; lỗi cũng bỏ qua.
+export const logout = async () => {
+  try {
+    await http.post(ENDPOINTS.auth.logout)
+  } catch (_) {
+    /* đăng xuất phía client vẫn tiếp tục dù API lỗi */
+  }
+}

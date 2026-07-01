@@ -1,4 +1,5 @@
 const moodle = require('../services/moodle.service');
+const { setSid, clearSid } = require('../utils/sessionCookie');
 
 function mapUser(info) {
   return {
@@ -20,6 +21,9 @@ exports.login = async (req, res, next) => {
     const wstoken = await moodle.getToken(username, password);
     const info = await moodle.getSiteInfo(wstoken);
 
+    // Ghi danh tính hiện tại vào cookie phiên -> đăng nhập tài khoản mới sẽ ghi đè
+    // danh tính cũ, khiến vé phát (hls_*) của tài khoản trước không còn dùng được.
+    setSid(res, info.username);
     res.json({ token: wstoken, user: mapUser(info) });
   } catch (err) {
     next(err);
@@ -37,6 +41,7 @@ exports.me = async (req, res, next) => {
 
     // getSiteInfo ném 401 nếu wstoken hết hạn -> rơi vào catch
     const info = await moodle.getSiteInfo(wstoken);
+    setSid(res, info.username); // làm mới cookie phiên cho lần tải lại trang
     res.json({ user: mapUser(info) });
   } catch (err) {
     if (err.status === 401) {
@@ -44,4 +49,10 @@ exports.me = async (req, res, next) => {
     }
     next(err);
   }
+};
+
+// POST /api/auth/logout  -> xóa cookie phiên (vé phát hls_* sẽ tự hết hạn theo TTL).
+exports.logout = (req, res) => {
+  clearSid(res);
+  res.json({ message: 'Đã đăng xuất' });
 };
