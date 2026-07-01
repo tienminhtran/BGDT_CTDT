@@ -278,7 +278,7 @@ function LoginForm({ login }) {
           </button>
         </form>
 
-        <div className="mt-2 border-t pt-5 text-center text-sm text-slate-500">
+        <div className="mt-2 pt-5 text-center text-sm text-slate-500">
           <p className="text-xs text-slate-400">
             © 2026 Phòng Đào tạo - Đại học Công nghiệp TP.HCM
           </p>

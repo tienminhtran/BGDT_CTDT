@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, PlayCircle, Loader2, Lock, Star, MessageSquare, Send } from 'lucide-react'
+import { ArrowLeft, PlayCircle, Loader2, Lock, Star, MessageSquare, Send, FileBadge } from 'lucide-react'
 import Layout from '../components/Layout'
 import HlsPlayer from '../components/HlsPlayer'
 import { useAuth } from '../contexts/AuthContext'
@@ -135,7 +135,7 @@ function DanhGiaSection({ baiGiangId, dg }) {
       {/* Form đánh giá của chính SV (prefill nếu đã từng đánh giá) */}
       <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-600">Số sao:</span>
+          <span className="text-sm text-slate-600">Lượt đánh giá của bạn:</span>
           <div className="flex items-center gap-0.5">
             {[1, 2, 3, 4, 5].map((n) => {
               const filled = n <= (hover || soSao)
@@ -380,7 +380,7 @@ export default function CoursePlayerPage() {
               <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm text-slate-500">
                   {videos.subjectName ? `Môn ${videos.subjectName}` : 'Bài giảng'}
-                  {videos.version ? ` · Phiên bản ${videos.version}` : ''}
+                  {/* {videos.version ? ` · Phiên bản ${videos.version}` : ''} */}
                 </p>
                 <span className="inline-flex items-center gap-1.5 text-sm text-slate-500">
                   <StarsDisplay value={dg.summary?.average || 0} size={16} />
@@ -393,8 +393,9 @@ export default function CoursePlayerPage() {
                 </span>
               </div>
 
-              <div className="mt-4 rounded-xl border-slate-200 bg-gray-200 p-4 text-sm leading-relaxed text-slate-600">
-                <h2 className="mb-2 font-semibold text-slate-800">Nội dung bài giảng</h2>
+              <div className="mt-4 rounded-xl border-slate-200 bg-gray-200 p-4 text-sm leading-relaxed text-slate-600 text-justify">
+                
+                <h2 className="mb-2 font-semibold text-slate-800"><FileBadge size={16} className="mr-1 inline-block text-slate-500" />Nội dung bài giảng</h2>
                 {active?.noiDungBaiGiang || 'Sinh viên theo dõi video bên trên và chuyển bài bằng danh sách bên phải.'}
               </div>
 

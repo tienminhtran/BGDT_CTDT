@@ -593,11 +593,24 @@ async function deleteVideo(idBaiGiang, teacherKey) {
     throw err;
   }
 
-  // Xóa TOÀN BỘ thư mục lưu trữ của bài giảng trên MinIO (cả stream/ lẫn chunk/),
-  // không chỉ dựa vào link trong DB -> dọn sạch cả khi upload dang dở (đang xử lý).
   await ensureBucket();
   const viTri = await getViTriBaiGiang(idBaiGiang);
   const prefix = `${sanitizeSegment(viTri.maTuQuan)}/${sanitizeSegment(viTri.version)}/${viTri.chiTietId}`;
+
+  // CHỈ cho xóa khi video đã hoàn chỉnh: có đủ stream (video.*) + chunk (index.m3u8 + >=1 .ts).
+  // Tránh xóa nhầm khi đang upload dang dở/đang xử lý hoặc khi chưa có video.
+  const trangThai = await trangThaiUploadTheoPrefix(prefix);
+  if (trangThai.status !== 'completed') {
+    const err = new Error(
+      trangThai.status === 'processing'
+        ? 'Video đang xử lý (chưa có đủ chunk), không thể xóa'
+        : 'Bài giảng chưa có đầy đủ stream và chunk, không thể xóa'
+    );
+    err.status = 409;
+    throw err;
+  }
+
+  // Xóa TOÀN BỘ thư mục lưu trữ của bài giảng trên MinIO (cả stream/ lẫn chunk/).
   const objectKeysToDelete = await listObjectNames(prefix);
 
   if (objectKeysToDelete.length > 0) {
