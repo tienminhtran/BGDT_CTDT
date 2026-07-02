@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { GraduationCap, ExternalLink } from 'lucide-react'
+import { GraduationCap, ExternalLink, BookOpen, FileVideoCamera } from 'lucide-react'
 import { courseService, baiGiangService } from '../services'
 import { STORAGE_KEYS, buildLmsCourseUrl } from '../constants'
 
@@ -96,7 +96,7 @@ export default function CourseList() {
       </h2>
 
       {/* Ô nhập đường dẫn vào học: gõ "mã môn/phiên bản" (vd 2101420/1) rồi Enter */}
-      <p className="mb-3 text-sm text-slate-500">
+      {/* <p className="mb-3 text-sm text-slate-500">
         Nhập <span className="font-medium">mã Giảng viên cung cấp tại LMS của khóa học đó</span>
         2101420/1
       </p>
@@ -183,7 +183,7 @@ export default function CourseList() {
           </svg>
           Bài giảng
         </button>
-      </form>
+      </form> */}
 
       <div className="grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {state.courses.map((c) => (
@@ -197,16 +197,26 @@ export default function CourseList() {
             <p className="mt-1 text-xs text-slate-400">{c.idnumber}</p>
             <ProgressBar value={c.progress} />
 
-            {/* Nút vào khóa học trên LMS */}
-            <div className="mt-auto pt-4">
+            {/* Hàng nút: Xem bài giảng + Truy cập LMS (cùng một hàng) */}
+            <div className="mt-auto flex gap-2 pt-4">
+              <button
+                type="button"
+                disabled={!c.token}
+                title={c.token ? 'Xem danh sách video bài giảng' : 'Môn này chưa có bài giảng'}
+                onClick={() => c.token && navigate(`/bai-giang-dien-tu/${c.token}`)}
+                className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-sm border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-[#115EA8] hover:text-[#115EA8] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-slate-300 disabled:hover:text-slate-600"
+              >
+                <FileVideoCamera size={16} />
+                Bài giảng
+              </button>
               <a
                 href={buildLmsCourseUrl(c.id)}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center justify-center gap-1.5 rounded-sm border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-[#115EA8] hover:text-[#115EA8]"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-sm border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-[#115EA8] hover:text-[#115EA8]"
               >
                 <ExternalLink size={16} />
-                Truy cập LMS
+                LMS
               </a>
             </div>
           </div>

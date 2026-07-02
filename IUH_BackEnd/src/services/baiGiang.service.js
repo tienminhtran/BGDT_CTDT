@@ -401,8 +401,23 @@ async function listVideos(maMon, version) {
     ],
   });
 
+  // Khi KHÔNG chỉ định version: chỉ lấy phiên bản MỚI NHẤT *có video*.
+  // rows đã lọc LinkBaiGiang != null nên mọi version xuất hiện đều có video;
+  // nếu bản mới nhất chưa có video thì nó không nằm trong rows -> tự lùi sang bản kế có video.
+  let selected = rows;
+  if (!version && rows.length) {
+    const versionsCoVideo = [
+      ...new Set(rows.map((bg) => bg.ChiTiet.DangKy.MonHocVersion.version)),
+    ];
+    // "Mới nhất" = version lớn nhất theo so sánh số (numeric-aware, vd '10' > '9').
+    const newest = versionsCoVideo.sort((a, b) =>
+      String(b).localeCompare(String(a), undefined, { numeric: true, sensitivity: 'base' })
+    )[0];
+    selected = rows.filter((bg) => bg.ChiTiet.DangKy.MonHocVersion.version === newest);
+  }
+
   // KHÔNG trả URL MinIO / mã môn ra client. Chỉ trả tên môn (hiển thị) + cờ video/HLS.
-  const videos = rows.map((bg) => ({
+  const videos = selected.map((bg) => ({
     baiGiangId: bg.Id,
     chiTietId: bg.ChiTiet.Id,
     noiDungChuong: bg.ChiTiet.NoiDungChuong,
@@ -413,7 +428,7 @@ async function listVideos(maMon, version) {
     coHls: !!bg.LinkChunkBaiGiang,
   }));
 
-  const subjectName = rows[0]?.ChiTiet?.DangKy?.MonHocVersion?.Monhoc?.tenmon ?? null;
+  const subjectName = selected[0]?.ChiTiet?.DangKy?.MonHocVersion?.Monhoc?.tenmon ?? null;
   return { subjectName, videos };
 }
 

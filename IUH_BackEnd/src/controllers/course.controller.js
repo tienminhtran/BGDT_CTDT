@@ -1,5 +1,6 @@
 const moodle = require('../services/moodle.service');
 const svhp = require('../services/sinhVienHocPhan.service');
+const { encodeCourse } = require('../utils/courseToken');
 
 function mapCourse(c) {
   return {
@@ -37,15 +38,26 @@ exports.list = async (req, res, next) => {
     // Nếu DB lỗi/chưa map thì vẫn trả về khóa học, chỉ thiếu maMon.
     let monMap = {};
     try {
-      monMap = await svhp.getMonHocByHocPhan(courses.map((c) => c.idnumber));
+      // Bỏ idnumber null/rỗng; chỉ tra DB khi còn ít nhất 1 mã học phần.
+      const idnumbers = courses.map((c) => c.idnumber).filter(Boolean);
+      if (idnumbers.length) {
+        monMap = await svhp.getMonHocByHocPhan(idnumbers);
+      }
     } catch (dbErr) {
       console.error('Không tra được MaMon từ DB:', dbErr.message);
     }
 
-    const result = courses.map((c) => {
+    // Bỏ khóa không có idnumber (không map được học phần) -> không trả ra client.
+    const result = courses
+      .filter((c) => c.idnumber)
+      .map((c) => {
       const maHocPhan = svhp.catHaiSoCuoi(c.idnumber);
       const monHoc = monMap[maHocPhan] || [];
-      return { ...mapCourse(c), maHocPhan, monHoc, maMon: monHoc[0] ?? null };
+      const maMon = monHoc[0] ?? null;
+      // Token mờ để vào thẳng danh sách video (nút "Xem bài giảng"). Không lộ mã môn.
+      // version=null -> lấy toàn bộ video của môn (không lọc theo phiên bản).
+      const token = maMon ? encodeCourse({ maMon, version: null }) : null;
+      return { ...mapCourse(c), maHocPhan, monHoc, maMon, token };
     });
 
     res.json({ courses: result });

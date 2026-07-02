@@ -17,7 +17,6 @@ const DangKyBaiGiang = {
     MaNguoiDuyet: { type: sql.VarChar(50), nullable: true },
     NgayDuyet: { type: sql.DateTime, nullable: true },
     GhiChuDuyet: { type: sql.NVarChar(sql.MAX), nullable: true },
-    ChuoiMaHoa: { type: sql.VarChar(255), nullable: true }
 
   },
 };

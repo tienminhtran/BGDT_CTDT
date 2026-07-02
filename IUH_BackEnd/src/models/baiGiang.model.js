@@ -29,6 +29,7 @@ const BaiGiang = {
     GhiChuLDK: { type: sql.NVarChar(sql.MAX), nullable: true },
     MaChuKyHashLDK: { type: sql.VarChar(500), nullable: true },
     LinkChunkBaiGiang: { type: sql.VarChar(sql.MAX), nullable: true },
+    LuotXem: { type: sql.Int, nullable: true, default: 0 },
   },
 };
 
