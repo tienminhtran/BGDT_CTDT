@@ -57,6 +57,7 @@ const BaiGiang = sequelize.define(
     NoiDungBaiGiang: { type: DataTypes.TEXT },
     LinkBaiGiang: { type: DataTypes.STRING(500) },
     LinkChunkBaiGiang: { type: DataTypes.TEXT },
+    LuotXem: { type: DataTypes.INTEGER },
   },
   { tableName: 'tb_BaiGiang' }
 );

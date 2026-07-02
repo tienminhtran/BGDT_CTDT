@@ -351,7 +351,7 @@ async function listVideos(maMon, version) {
   const versionWhere = version ? { version } : undefined;
 
   const rows = await BaiGiang.findAll({
-    attributes: ['Id', 'TenBaiGiang', 'NoiDungBaiGiang', 'LinkBaiGiang', 'LinkChunkBaiGiang'],
+    attributes: ['Id', 'TenBaiGiang', 'NoiDungBaiGiang', 'LinkBaiGiang', 'LinkChunkBaiGiang', 'LuotXem'],
     where: { LinkBaiGiang: { [Op.ne]: null } },
     include: [
       {
@@ -426,6 +426,7 @@ async function listVideos(maMon, version) {
     version: bg.ChiTiet.DangKy.MonHocVersion.version,
     coVideo: !!bg.LinkBaiGiang,
     coHls: !!bg.LinkChunkBaiGiang,
+    luotXem: bg.LuotXem ?? 0,
   }));
 
   const subjectName = selected[0]?.ChiTiet?.DangKy?.MonHocVersion?.Monhoc?.tenmon ?? null;
@@ -440,7 +441,7 @@ async function listVideos(maMon, version) {
  */
 async function getBaiGiangById(idBaiGiang) {
   const bg = await BaiGiang.findByPk(idBaiGiang, {
-    attributes: ['Id', 'TenBaiGiang', 'NoiDungBaiGiang', 'LinkBaiGiang', 'LinkChunkBaiGiang'],
+    attributes: ['Id', 'TenBaiGiang', 'NoiDungBaiGiang', 'LinkBaiGiang', 'LinkChunkBaiGiang', 'LuotXem'],
     include: [
       {
         model: ChiTietDangKyBaiGiang,
@@ -487,6 +488,7 @@ async function getBaiGiangById(idBaiGiang) {
     version: mv.version,
     coVideo: !!bg.LinkBaiGiang,
     coHls: !!bg.LinkChunkBaiGiang,
+    luotXem: bg.LuotXem ?? 0,
   };
 }
 
@@ -633,6 +635,64 @@ async function deleteVideo(idBaiGiang, teacherKey) {
   return { message: 'Xóa video bài giảng thành công' };
 }
 
+/**
+ * Từ 1 danh sách mã môn (ma_tuquan), trả về tập mã môn CÓ ÍT NHẤT 1 video
+ * (tb_BaiGiang.LinkBaiGiang != null), bất kể phiên bản. Dùng để quyết định
+ * bật/tắt nút "Xem bài giảng" theo tình trạng video thực tế.
+ *
+ * @param {string[]} maMonList
+ * @returns {Promise<Set<string>>} tập ma_tuquan có video
+ */
+async function getMaMonCoVideo(maMonList) {
+  const list = [...new Set((maMonList || []).filter(Boolean))];
+  if (!list.length) return new Set();
+
+  const rows = await BaiGiang.findAll({
+    attributes: ['Id'],
+    where: { LinkBaiGiang: { [Op.ne]: null } },
+    include: [
+      {
+        model: ChiTietDangKyBaiGiang,
+        as: 'ChiTiet',
+        attributes: ['Id'],
+        required: true,
+        include: [
+          {
+            model: DangKyBaiGiang,
+            as: 'DangKy',
+            attributes: ['Id'],
+            required: true,
+            include: [
+              {
+                model: MonhocVersion,
+                as: 'MonHocVersion',
+                attributes: ['id'],
+                required: true,
+                include: [
+                  {
+                    model: Monhoc,
+                    as: 'Monhoc',
+                    attributes: ['ma_tuquan'],
+                    required: true,
+                    where: { ma_tuquan: { [Op.in]: list } },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+
+  const found = new Set();
+  for (const bg of rows) {
+    const ma = bg.ChiTiet?.DangKy?.MonHocVersion?.Monhoc?.ma_tuquan;
+    if (ma) found.add(ma);
+  }
+  return found;
+}
+
 module.exports = {
   getViTriBaiGiang,
   kiemTraTrangThaiUpload,
@@ -643,4 +703,5 @@ module.exports = {
   getOrCreateBaiGiang,
   streamHls,
   deleteVideo,
+  getMaMonCoVideo,
 };

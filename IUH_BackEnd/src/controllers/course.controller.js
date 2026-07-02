@@ -1,5 +1,6 @@
 const moodle = require('../services/moodle.service');
 const svhp = require('../services/sinhVienHocPhan.service');
+const baiGiang = require('../services/baiGiang.service');
 const { encodeCourse } = require('../utils/courseToken');
 
 // Chỉ trả vài field FE cần: id (link LMS), tên môn, mã học phần, tiến độ.
@@ -28,14 +29,17 @@ exports.list = async (req, res, next) => {
     // Gắn MaMon cho từng khóa học (idnumber = MaHocPhan -> tra tb_HocPhanMonHoc).
     // Nếu DB lỗi/chưa map thì vẫn trả về khóa học, chỉ thiếu maMon.
     let monMap = {};
+    let coVideoSet = new Set(); // các mã môn thật sự có video (để bật nút "Xem bài giảng")
     try {
       // Bỏ idnumber null/rỗng; chỉ tra DB khi còn ít nhất 1 mã học phần.
       const idnumbers = courses.map((c) => c.idnumber).filter(Boolean);
       if (idnumbers.length) {
         monMap = await svhp.getMonHocByHocPhan(idnumbers);
+        // Trong các mã môn map được, lọc ra mã môn CÓ video (LinkBaiGiang != null).
+        coVideoSet = await baiGiang.getMaMonCoVideo(Object.values(monMap).flat());
       }
     } catch (dbErr) {
-      console.error('Không tra được MaMon từ DB:', dbErr.message);
+      console.error('Không tra được MaMon/tình trạng video từ DB:', dbErr.message);
     }
 
     // Bỏ khóa không có idnumber (không map được học phần) -> không trả ra client.
@@ -45,9 +49,10 @@ exports.list = async (req, res, next) => {
       const maHocPhan = svhp.catHaiSoCuoi(c.idnumber);
       const monHoc = monMap[maHocPhan] || [];
       const maMon = monHoc[0] ?? null;
-      // Token mờ để vào thẳng danh sách video (nút "Xem bài giảng"). Không lộ mã môn.
-      // version=null -> lấy toàn bộ video của môn (không lọc theo phiên bản).
-      const token = maMon ? encodeCourse({ maMon, version: null }) : null;
+      // Chỉ cấp token khi môn CÓ video thật sự -> nút "Xem bài giảng" mới bật.
+      // version=null -> player tự lấy phiên bản mới nhất có video. Token mờ, không lộ mã môn.
+      const token =
+        maMon && coVideoSet.has(maMon) ? encodeCourse({ maMon, version: null }) : null;
       // KHÔNG trả maHocPhan/maMon/monHoc ra client (lộ map nội bộ). Chỉ trả token mờ.
       return { ...mapCourse(c), token };
     });

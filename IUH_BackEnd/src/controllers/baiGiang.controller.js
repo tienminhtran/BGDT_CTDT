@@ -5,6 +5,7 @@ const multer = require('multer');
 const jwt = require('jsonwebtoken');
 
 const baiGiang = require('../services/baiGiang.service');
+const luotXem = require('../services/luotXem.service');
 const moodle = require('../services/moodle.service');
 const svhp = require('../services/sinhVienHocPhan.service');
 const { encodeCourse, decodeCourse } = require('../utils/courseToken');
@@ -240,6 +241,18 @@ exports.createCourseToken = async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+};
+
+// POST /api/lectures/:id/view
+// Client gửi bằng navigator.sendBeacon sau khi xem >= 3s. Chỉ cộng buffer RAM
+// (có dedupe), KHÔNG đụng DB; cron sẽ gộp ghi. Luôn trả 204 (beacon bỏ qua body).
+exports.tangLuotXem = (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (Number.isInteger(id) && id > 0) {
+    const viewer = (req.body && req.body.v) || req.ip;
+    luotXem.ghiNhanLuotXem(id, viewer);
+  }
+  res.status(204).end();
 };
 
 // GET /api/lectures/chapters?subjectVersionId=<id>

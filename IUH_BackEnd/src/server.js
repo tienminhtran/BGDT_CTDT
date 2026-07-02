@@ -3,6 +3,7 @@ require('dotenv').config();
 const app = require('./app');
 const { getPool } = require('./config/db');
 const { ensureBucket } = require('./config/minio');
+const luotXem = require('./services/luotXem.service');
 
 const result = require('dotenv').config();
 console.log('dotenv result:', result);
@@ -22,11 +23,22 @@ async function start() {
 
     app.listen(PORT, () => {
       console.log(`2.Server đang chạy tại http://localhost:${PORT}`);
+      // Bật cron gộp lượt xem (buffer RAM -> UPDATE định kỳ).
+      luotXem.startFlushLoop();
     });
   } catch (err) {
     console.error('Không thể khởi động server:', err.message);
     process.exit(1);
   }
+}
+
+// Khi tắt server: ghi nốt lượt xem còn trong buffer rồi mới thoát.
+for (const sig of ['SIGINT', 'SIGTERM']) {
+  process.on(sig, async () => {
+    luotXem.stopFlushLoop();
+    await luotXem.flush().catch(() => {});
+    process.exit(0);
+  });
 }
 
 start();

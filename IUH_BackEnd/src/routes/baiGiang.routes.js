@@ -19,6 +19,9 @@ router.post('/chapters/:chapterId/ensure', controller.ensureBaiGiang);
 // GET /api/lectures/:id/playback-token  -> token xem HLS (cần đăng nhập LMS)
 router.get('/:id/playback-token', controller.playbackToken);
 
+// POST /api/lectures/:id/view  -> đếm lượt xem (gửi bằng sendBeacon sau khi xem >= 3s)
+router.post('/:id/view', controller.tangLuotXem);
+
 // GET /api/lectures/:id/teacher  (Header: x-teacher-key)
 // Giảng viên xem 1 video riêng lẻ chỉ bằng id (tb_BaiGiang). Trả metadata + url phát.
 router.get('/:id/teacher', controller.getBaiGiangTeacher);

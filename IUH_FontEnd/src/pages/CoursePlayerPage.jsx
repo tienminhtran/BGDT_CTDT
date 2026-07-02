@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, PlayCircle, Loader2, Lock, Star, MessageSquare, Send, FileBadge } from 'lucide-react'
 import Layout from '../components/Layout'
 import HlsPlayer from '../components/HlsPlayer'
 import { useAuth } from '../contexts/AuthContext'
 import { baiGiangService, sinhVienHocPhanService, danhGiaService } from '../services'
-import { ROUTES } from '../constants'
+import { ROUTES, API_BASE_URL } from '../constants'
 
 const tieuDe = (v) => v?.tenBaiGiang || v?.noiDungChuong || 'Bài giảng'
 
@@ -292,6 +292,26 @@ export default function CoursePlayerPage() {
       alive = false
     }
   }, [active?.baiGiangId, active?.coHls])
+
+  // Đếm lượt xem: ở lại bài giảng >= 3s mới gửi 1 beacon (mỗi bài giảng chỉ tính 1 lần/phiên).
+  // sendBeacon nhẹ, không chặn UI, không cần chờ response.
+  const daDemRef = useRef(new Set())
+  useEffect(() => {
+    const id = active?.baiGiangId
+    if (!id || daDemRef.current.has(id)) return
+    const t = setTimeout(() => {
+      daDemRef.current.add(id)
+      try {
+        const body = new Blob([JSON.stringify({ v: user?.username || '' })], {
+          type: 'application/json',
+        })
+        navigator.sendBeacon(`${API_BASE_URL}/lectures/${id}/view`, body)
+      } catch {
+        // Trình duyệt không hỗ trợ sendBeacon -> bỏ qua, không ảnh hưởng xem video.
+      }
+    }, 3000)
+    return () => clearTimeout(t)
+  }, [active?.baiGiangId, user?.username])
 
   // Đánh giá / bình luận của bài giảng đang xem
   const dg = useDanhGia(active?.baiGiangId ?? null)
