@@ -25,12 +25,12 @@ function getPool() {
     poolPromise = new sql.ConnectionPool(config)
       .connect()
       .then((pool) => {
-        console.log('1. Đã kết nối SQL Server');
+        console.log('================Đã kết nối SQL Server==============');
         return pool;
       })
       .catch((err) => {
         poolPromise = undefined;
-        console.error('Lỗi kết nối SQL Server:', err.message);
+        console.error('*******************Lỗi kết nối SQL Server:', err.message);
         throw err;
       });
   }
