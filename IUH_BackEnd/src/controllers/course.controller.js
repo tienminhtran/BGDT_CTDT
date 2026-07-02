@@ -2,22 +2,13 @@ const moodle = require('../services/moodle.service');
 const svhp = require('../services/sinhVienHocPhan.service');
 const { encodeCourse } = require('../utils/courseToken');
 
+// Chỉ trả vài field FE cần: id (link LMS), tên môn, mã học phần, tiến độ.
 function mapCourse(c) {
   return {
     id: c.id,
-    shortname: c.shortname,
     fullname: c.fullname,
-    displayname: c.displayname,
     idnumber: c.idnumber,
-    category: c.category,
-    summary: c.summary,
     progress: c.progress ?? null,
-    completed: c.completed ?? null,
-    visible: c.visible,
-    hidden: c.hidden,
-    startdate: c.startdate,
-    enddate: c.enddate,
-    lastaccess: c.lastaccess,
   };
 }
 
@@ -57,7 +48,8 @@ exports.list = async (req, res, next) => {
       // Token mờ để vào thẳng danh sách video (nút "Xem bài giảng"). Không lộ mã môn.
       // version=null -> lấy toàn bộ video của môn (không lọc theo phiên bản).
       const token = maMon ? encodeCourse({ maMon, version: null }) : null;
-      return { ...mapCourse(c), maHocPhan, monHoc, maMon, token };
+      // KHÔNG trả maHocPhan/maMon/monHoc ra client (lộ map nội bộ). Chỉ trả token mờ.
+      return { ...mapCourse(c), token };
     });
 
     res.json({ courses: result });
