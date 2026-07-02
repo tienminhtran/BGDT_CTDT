@@ -11,6 +11,8 @@ import {
   ExternalLink,
   FileSpreadsheet,
   Trash2,
+  Search,
+  X,
 } from 'lucide-react'
 import Layout from '../components/Layout'
 import HlsPlayer from '../components/HlsPlayer'
@@ -26,6 +28,10 @@ export default function QuanLyBaiGiangPage() {
 
   const [monHocId, setMonHocId] = useState('')
   const [versionId, setVersionId] = useState('')
+
+  // Ô tìm môn theo mã môn (maTuQuan) thay cho việc liệt kê toàn bộ danh sách
+  const [monSearch, setMonSearch] = useState('')
+  const [showGoiY, setShowGoiY] = useState(false)
 
   const [chiTiet, setChiTiet] = useState([])
   const [loadingChiTiet, setLoadingChiTiet] = useState(false)
@@ -54,6 +60,19 @@ export default function QuanLyBaiGiangPage() {
   )
   const versions = monDangChon?.versions || []
 
+  // Lọc gợi ý theo mã môn (maTuQuan) hoặc tên môn — chỉ hiện tối đa 8 kết quả
+  const goiYMon = useMemo(() => {
+    const q = monSearch.trim().toLowerCase()
+    if (!q) return []
+    return monHoc
+      .filter(
+        (m) =>
+          m.maTuQuan?.toLowerCase().includes(q) ||
+          m.tenMon?.toLowerCase().includes(q)
+      )
+      .slice(0, 8)
+  }, [monHoc, monSearch])
+
   // 2) Khi chọn phiên bản -> lấy chi tiết đăng ký bài giảng (các chương)
   const taiChiTiet = (vid) => {
     if (!vid) {
@@ -70,9 +89,20 @@ export default function QuanLyBaiGiangPage() {
       .finally(() => setLoadingChiTiet(false))
   }
 
-  const onChonMon = (e) => {
-    const id = e.target.value
-    setMonHocId(id)
+  // Chọn 1 môn từ danh sách gợi ý
+  const chonMon = (m) => {
+    setMonHocId(String(m.id))
+    setMonSearch(`${m.tenMon} (${m.maTuQuan})`)
+    setShowGoiY(false)
+    setVersionId('')
+    setChiTiet([])
+  }
+
+  // Bỏ chọn môn để tìm lại
+  const boChonMon = () => {
+    setMonHocId('')
+    setMonSearch('')
+    setShowGoiY(false)
     setVersionId('')
     setChiTiet([])
   }
@@ -151,24 +181,70 @@ export default function QuanLyBaiGiangPage() {
 
         {/* Bộ chọn môn + phiên bản */}
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">Môn học</span>
-            <select
-              value={monHocId}
-              onChange={onChonMon}
-              disabled={loadingMon}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#115EA8]"
-            >
-              <option value="">
-                {loadingMon ? 'Đang tải...' : '-- Chọn môn học --'}
-              </option>
-              {monHoc.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.tenMon} ({m.maTuQuan})
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="relative block">
+            <span className="mb-1 block text-sm font-medium text-slate-700">
+              Mã môn học
+            </span>
+            <div className="relative">
+              <input
+                type="text"
+                value={monSearch}
+                onChange={(e) => {
+                  setMonSearch(e.target.value)
+                  setShowGoiY(true)
+                  if (monHocId) {
+                    setMonHocId('')
+                    setVersionId('')
+                    setChiTiet([])
+                  }
+                }}
+                onFocus={() => setShowGoiY(true)}
+                onBlur={() => setTimeout(() => setShowGoiY(false), 150)}
+                disabled={loadingMon}
+                placeholder={loadingMon ? 'Đang tải...' : 'Nhập mã môn, ví dụ: 2101420'}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 pr-8 text-sm outline-none focus:border-[#115EA8] disabled:bg-slate-100"
+              />
+              {monHocId ? (
+                <button
+                  type="button"
+                  onClick={boChonMon}
+                  title="Bỏ chọn"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X size={16} />
+                </button>
+              ) : (
+                <Search
+                  size={16}
+                  className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+              )}
+            </div>
+
+            {showGoiY && monSearch.trim() && !monHocId && (
+              <ul className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border border-slate-200 bg-white shadow-lg">
+                {goiYMon.length ? (
+                  goiYMon.map((m) => (
+                    <li key={m.id}>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => chonMon(m)}
+                        className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                      >
+                        <span className="font-medium text-slate-800">{m.maTuQuan}</span>
+                        <span className="text-slate-500"> — {m.tenMon}</span>
+                      </button>
+                    </li>
+                  ))
+                ) : (
+                  <li className="px-3 py-2 text-sm text-slate-400">
+                    Không tìm thấy môn khớp mã.
+                  </li>
+                )}
+              </ul>
+            )}
+          </div>
 
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700">Phiên bản</span>
