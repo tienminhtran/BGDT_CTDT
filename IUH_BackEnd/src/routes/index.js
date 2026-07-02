@@ -19,6 +19,10 @@ router.use('/student-courses', svhpRoutes);
 const monHocRoutes = require('./monHoc.routes');
 router.use('/subjects', monHocRoutes);
 
+// Ánh xạ học phần <-> môn học (import từ Excel)
+const hocPhanMonHocRoutes = require('./hocPhanMonHoc.routes');
+router.use('/course-subjects', hocPhanMonHocRoutes);
+
 // Bài giảng (upload video lên MinIO)
 const baiGiangRoutes = require('./baiGiang.routes');
 router.use('/lectures', baiGiangRoutes);

@@ -2,3 +2,4 @@
 export * as monHocService from './monHocService'
 export * as baiGiangService from './baiGiangService'
 export * as danhGiaService from './danhGiaService'
+export * as hocPhanMonHocService from './hocPhanMonHocService'

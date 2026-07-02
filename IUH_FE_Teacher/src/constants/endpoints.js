@@ -14,4 +14,7 @@ export const ENDPOINTS = {
   reviews: {
     byLecture: (lectureId) => `/reviews/${lectureId}`,
   },
+  courseSubjects: {
+    import: '/course-subjects/import', // POST { rows: [{ MaMon, MaHocPhan }] }
+  },
 }
