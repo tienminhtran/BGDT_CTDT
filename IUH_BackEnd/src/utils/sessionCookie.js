@@ -14,7 +14,10 @@ const SID_TTL = process.env.SID_TTL || '12h';
 const SID_COOKIE = 'sid';
 
 // Ghi danh tính hiện tại vào cookie 'sid' (ký JWT). Gọi khi đăng nhập / xác thực lại.
-function setSid(res, subject) {
+// `req` dùng để biết kết nối hiện tại có phải HTTPS không: cookie Secure bị trình duyệt
+// âm thầm bỏ qua trên HTTP (vd server nội bộ chạy http://<ip>:port dù NODE_ENV=production)
+// -> phải xét theo kết nối thực tế thay vì hardcode theo NODE_ENV.
+function setSid(res, subject, req) {
   const token = jwt.sign({ sub: String(subject) }, process.env.JWT_SECRET, {
     expiresIn: SID_TTL,
   });
@@ -23,7 +26,7 @@ function setSid(res, subject) {
   res.cookie(SID_COOKIE, token, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    secure: !!req?.secure,
     path: '/api', // gửi cho mọi route /api, gồm cả /api/lectures/:id/hls/*
     maxAge,
   });

@@ -4,6 +4,8 @@ import { API_BASE_URL, TEACHER_KEY } from '../constants'
 // Axios instance dùng chung cho toàn app giảng viên (không cần đăng nhập).
 const http = axios.create({
   baseURL: API_BASE_URL,
+  // Bắt buộc để trình duyệt lưu/gửi cookie HttpOnly hls_<id> khi backend khác origin.
+  withCredentials: true,
 })
 
 // Gắn key giảng viên vào mọi request để backend cho qua (thay cho đăng nhập LMS).

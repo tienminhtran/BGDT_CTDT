@@ -8,7 +8,12 @@ const errorHandler = require('./middlewares/errorHandler');
 const app = express();
 
 // Middlewares
-app.use(cors());
+// HLS xác thực bằng cookie HttpOnly -> phải bật credentials và echo đúng origin
+// (Access-Control-Allow-Origin '*' + credentials không được phép theo spec CORS).
+app.use(cors({
+  origin: (origin, callback) => callback(null, true),
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 if (process.env.NODE_ENV !== 'production') {

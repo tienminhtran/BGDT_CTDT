@@ -23,7 +23,7 @@ exports.login = async (req, res, next) => {
 
     // Ghi danh tính hiện tại vào cookie phiên -> đăng nhập tài khoản mới sẽ ghi đè
     // danh tính cũ, khiến vé phát (hls_*) của tài khoản trước không còn dùng được.
-    setSid(res, info.username);
+    setSid(res, info.username, req);
     res.json({ token: wstoken, user: mapUser(info) });
   } catch (err) {
     next(err);
@@ -41,7 +41,7 @@ exports.me = async (req, res, next) => {
 
     // getSiteInfo ném 401 nếu wstoken hết hạn -> rơi vào catch
     const info = await moodle.getSiteInfo(wstoken);
-    setSid(res, info.username); // làm mới cookie phiên cho lần tải lại trang
+    setSid(res, info.username, req); // làm mới cookie phiên cho lần tải lại trang
     res.json({ user: mapUser(info) });
   } catch (err) {
     if (err.status === 401) {

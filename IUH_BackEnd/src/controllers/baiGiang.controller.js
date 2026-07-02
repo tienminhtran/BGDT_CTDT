@@ -20,13 +20,15 @@ const HLS_TOKEN_TTL = process.env.HLS_TOKEN_TTL || '2h';
 
 // Đặt token phát vào cookie HttpOnly (KHÔNG nằm trên URL) -> copy link không xem được.
 // Scope theo path bài giảng: cookie chỉ được gửi cho đúng endpoint HLS của bài giảng đó.
-function setHlsCookie(res, id, token) {
+// secure xét theo req.secure (kết nối thực tế), không hardcode theo NODE_ENV: server nội bộ
+// vẫn chạy production qua http://<ip>:port (không TLS) -> cookie Secure sẽ bị trình duyệt bỏ qua.
+function setHlsCookie(res, id, token, req) {
   const exp = jwt.decode(token)?.exp; // giây; đặt maxAge cookie khớp hạn token
   const maxAge = exp ? Math.max(0, exp * 1000 - Date.now()) : undefined;
   res.cookie(`hls_${id}`, token, {
     httpOnly: true,          // JS trang không đọc được -> khó trích xuất/chia sẻ
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production', // dev http vẫn gửi được
+    secure: !!req?.secure,
     path: `/api/lectures/${id}/hls`,
     maxAge,
   });
@@ -113,7 +115,7 @@ exports.playbackToken = async (req, res, next) => {
 
       // Ghi danh tính hiện tại vào cookie phiên NGAY (kể cả trước khi kiểm quyền): nếu SV này
       // không có quyền, sid vẫn được cập nhật -> vé cũ của tài khoản khác trong browser vô hiệu.
-      setSid(res, info.username);
+      setSid(res, info.username, req);
 
       // 2) Phải thuộc học phần chứa môn của chính bài giảng này (chống gọi thẳng API).
       //    maTuQuan của bài giảng = MaMon dùng để đối chiếu tb_SinhVienHocPhan.
@@ -127,12 +129,12 @@ exports.playbackToken = async (req, res, next) => {
       viewer = info.username;
     }
 
-    if (isTeacher) setSid(res, viewer);
+    if (isTeacher) setSid(res, viewer, req);
     // Vé phát gắn cả bài giảng (bg) lẫn người xem (mssv) -> streamHls chặn dùng vé chéo tài khoản.
     const token = jwt.sign({ bg: id, mssv: viewer }, process.env.JWT_SECRET, {
       expiresIn: HLS_TOKEN_TTL,
     });
-    setHlsCookie(res, id, token);
+    setHlsCookie(res, id, token, req);
     // URL KHÔNG kèm token -> xác thực bằng cookie HttpOnly, copy link cho người ngoài sẽ 401.
     res.json({ url: `/api/lectures/${id}/hls/index.m3u8` });
   } catch (err) {
@@ -162,11 +164,11 @@ exports.getBaiGiangTeacher = async (req, res, next) => {
     let token = null;
     let url = null;
     if (info.coHls) {
-      setSid(res, TEACHER_SUBJECT); // gắn danh tính giảng viên vào cookie phiên
+      setSid(res, TEACHER_SUBJECT, req); // gắn danh tính giảng viên vào cookie phiên
       token = jwt.sign({ bg: id, mssv: TEACHER_SUBJECT }, process.env.JWT_SECRET, {
         expiresIn: HLS_TOKEN_TTL,
       });
-      setHlsCookie(res, id, token);
+      setHlsCookie(res, id, token, req);
       url = `/api/lectures/${id}/hls/index.m3u8`; // token nằm ở cookie, không trên URL
     }
 
