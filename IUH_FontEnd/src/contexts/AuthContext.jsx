@@ -7,7 +7,7 @@ import {
   useRef,
 } from 'react'
 import { authService, sinhVienHocPhanService } from '../services'
-import { STORAGE_KEYS, SESSION_MAX_AGE_MS } from '../constants'
+import { STORAGE_KEYS, SESSION_MAX_AGE_MS, ROUTES } from '../constants'
 
 /**
  * Quản lý trạng thái đăng nhập LMS cho toàn ứng dụng.
@@ -78,23 +78,18 @@ export function AuthProvider({ children }) {
     return clearLogoutTimer
   }, [logout, scheduleAutoLogout])
 
-  const login = useCallback(
-    async (username, password) => {
-      const { token, user: loggedInUser } = await authService.login(
-        username,
-        password
-      )
-      const loginAt = Date.now()
-      localStorage.setItem(STORAGE_KEYS.token, token)
-      localStorage.setItem(STORAGE_KEYS.loginAt, String(loginAt))
-      setUser(loggedInUser)
-      scheduleAutoLogout(loginAt) // bắt đầu đếm 2h
+  const login = useCallback(async (username, password) => {
+    const { token } = await authService.login(username, password)
+    const loginAt = Date.now()
+    localStorage.setItem(STORAGE_KEYS.token, token)
+    localStorage.setItem(STORAGE_KEYS.loginAt, String(loginAt))
 
-      // Lưu lần đầu các học phần hiện có vào DB (không chặn UI).
-      sinhVienHocPhanService.importHocPhan().catch(() => {})
-    },
-    [scheduleAutoLogout]
-  )
+    // Lưu lần đầu các học phần hiện có vào DB; await để request không bị hủy khi reload.
+    await sinhVienHocPhanService.importHocPhan().catch(() => {})
+
+    // Reload cứng vào trang chủ -> Network panel bị xóa, entry /auth/login (kèm mật khẩu) biến mất.
+    window.location.assign(ROUTES.dashboard)
+  }, [])
 
   return (
     <AuthContext.Provider value={{ user, checking, login, logout }}>
