@@ -192,7 +192,7 @@ export default function MyFeedback() {
                  Thời gian đánh giá: {formatRelativeTime(item.createdAt)}
                 </p>
 
-                <p className="mt-2 text-sm text-gray-700">
+                <p className="mt-2 text-sm text-gray-700 text-justify">
                   {item.comment ? (
                     item.comment
                   ) : (
