@@ -29,13 +29,13 @@ export default function LoginModal({ onLogin, onClose }) {
     >
       {/* Cửa sổ phụ đăng nhập LMS */}
       <div
-        className="w-[400px] max-w-full overflow-hidden rounded-xl bg-white shadow-2xl"
+        className="w-[400px] max-w-full overflow-hidden bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Thanh tiêu đề giả lập cửa sổ */}
         <div className="flex items-center justify-between bg-blue-900 px-4 py-2.5 text-white">
           <span className="flex items-center gap-2 text-sm font-medium">
-            <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-400" />
+            <span className="inline-block h-2.5 w-2.5 bg-green-400" />
             lms.iuh.edu.vn — Đăng nhập
           </span>
           <button
@@ -66,14 +66,14 @@ export default function LoginModal({ onLogin, onClose }) {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoFocus
-            className="rounded-lg border border-gray-300 px-3 py-2.5 text-[0.95rem] outline-none focus:border-blue-900"
+            className=" border border-gray-300 px-3 py-2.5 text-[0.95rem] outline-none focus:border-blue-900"
           />
           <input
             type="password"
             placeholder="Mật khẩu"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="rounded-lg border border-gray-300 px-3 py-2.5 text-[0.95rem] outline-none focus:border-blue-900"
+            className=" border border-gray-300 px-3 py-2.5 text-[0.95rem] outline-none focus:border-blue-900"
           />
 
           {error && <p className="text-sm text-red-600">{error}</p>}
@@ -81,7 +81,7 @@ export default function LoginModal({ onLogin, onClose }) {
           <button
             type="submit"
             disabled={loading || !username || !password}
-            className="mt-1 rounded-lg bg-blue-900 py-2.5 text-base text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300"
+            className="mt-1 bg-blue-900 py-2.5 text-base text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300"
           >
             {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </button>
