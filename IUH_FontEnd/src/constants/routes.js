@@ -6,6 +6,8 @@ export const ROUTES = {
   // Token mờ (AES) do backend cấp, không lộ mã môn/phiên bản -> 1 tham số :token
   coursePlayer: '/bai-giang-dien-tu/:token',
   danhGia: '/danh-gia',
+  // Trang hướng dẫn công khai (xem được khi chưa đăng nhập)
+  huongDan: '/huong-dan',
 }
 
 // Tạo đường dẫn vào học từ token mờ (lấy qua API /lectures/token).

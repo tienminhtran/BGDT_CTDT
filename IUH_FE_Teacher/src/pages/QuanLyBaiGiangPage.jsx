@@ -303,7 +303,7 @@ export default function QuanLyBaiGiangPage() {
               min="1"
               value={quickId}
               onChange={(e) => setQuickId(e.target.value)}
-              placeholder="Ví dụ: 1002"
+              placeholder="Ví dụ: 1002 (local) triển khai: 13, 23..."
               className="min-w-0 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#115EA8] sm:max-w-md"
             />
             <button

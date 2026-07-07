@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { BookOpen } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { ROUTES } from '../constants'
 import bgImage from '../assets/bg.jpg'
 import logo from '../assets/logo.svg'
 import img_bg_login from '../assets/img_bg_login.svg'
@@ -160,6 +163,14 @@ export default function HomePage() {
                 </span>
               </li>
             </ol>
+
+            <Link
+              to={ROUTES.huongDan}
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-950"
+            >
+              <BookOpen size={16} />
+              Xem hướng dẫn sử dụng chi tiết
+            </Link>
           </div>
 
           {/* Form đăng nhập - hiện trước trên mobile, hiện sau (phải) trên desktop */}

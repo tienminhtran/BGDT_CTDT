@@ -3,7 +3,7 @@ import { Loader2 } from 'lucide-react'
 import { useAuth } from './contexts/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import { ROUTES } from './constants'
-import { HomePage, DashboardPage, CoursePlayerPage, MyFeedback } from './pages'
+import { HomePage, DashboardPage, CoursePlayerPage, MyFeedback, ManualPage } from './pages'
 
 export default function App() {
   const { user, checking } = useAuth()
@@ -44,6 +44,9 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+
+      {/* Trang hướng dẫn công khai - xem được khi chưa đăng nhập */}
+      <Route path={ROUTES.huongDan} element={<ManualPage />} />
 
       {/* Trang đánh giá */}
       <Route
