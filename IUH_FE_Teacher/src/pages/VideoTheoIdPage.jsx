@@ -33,7 +33,7 @@ export default function VideoTheoIdPage() {
   const { loading, data, error } = state
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-black">
+    <div className="relative h-screen w-screen overflow-hidden">
       {data?.url ? (
         <HlsPlayer
           key={data.baiGiangId}
@@ -51,8 +51,15 @@ export default function VideoTheoIdPage() {
               <p className="mt-3 text-sm">Đang tải video...</p>
             </>
           ) : error ? (
-            <div className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
-              <AlertTriangle size={16} /> {error}
+            <div className="flex flex-col items-center gap-3">
+              <img
+                src="/icon_nodata.svg"
+                alt="Không có dữ liệu"
+                className="h-40 w-40 opacity-90"
+              />
+              <div className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                <AlertTriangle size={16} /> {error}
+              </div>
             </div>
           ) : (
             <>

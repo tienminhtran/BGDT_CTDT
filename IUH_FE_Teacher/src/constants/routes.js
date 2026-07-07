@@ -1,6 +1,8 @@
 // Đường dẫn (path) của các trang trong app giảng viên.
 export const ROUTES = {
   home: '/', // Trang quản lý bài giảng
+  importHocPhan: '/import-hoc-phan', // Import ánh xạ học phần ↔ môn học (Excel)
+  danhGia: '/danh-gia', // Quản lý đánh giá (sao, bình luận, lượt xem)
   // Token mờ (AES) do backend cấp, không lộ mã môn/phiên bản -> 1 tham số :token
   coursePlayer: '/bai-giang-dien-tu/:token',
   // Xem 1 video riêng lẻ theo id bài giảng (tb_BaiGiang)

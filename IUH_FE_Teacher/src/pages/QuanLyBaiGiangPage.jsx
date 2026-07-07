@@ -9,16 +9,15 @@ import {
   PlayCircle,
   AlertTriangle,
   ExternalLink,
-  FileSpreadsheet,
-  Trash2,
   Search,
   X,
 } from 'lucide-react'
-import Layout from '../components/Layout'
 import HlsPlayer from '../components/HlsPlayer'
-import { monHocService, baiGiangService, hocPhanMonHocService } from '../services'
+import { PageHeading } from '../components/QuanLyLayout'
+import { monHocService, baiGiangService } from '../services'
 import { buildCoursePlayerPath, buildVideoTheoIdPath } from '../constants'
 
+// Trang "Quản lý bài giảng": chọn môn/phiên bản, xem chương và upload video.
 export default function QuanLyBaiGiangPage() {
   const navigate = useNavigate()
 
@@ -161,364 +160,201 @@ export default function QuanLyBaiGiangPage() {
   }
 
   return (
-    <Layout>
-      <main className="w-full px-6 py-6">
-        <h1 className="flex items-center gap-2 text-xl font-semibold text-[#43a811]">
-          <BookOpen size={22} /> Chức năng quản lý bài giảng, Quản trị viên
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Chọn môn học và phiên bản để xem các chương và tải video bài giảng lên.
-        </p>
+    <>
+      <PageHeading
+        icon={BookOpen}
+        title="Quản lý bài giảng"
+        desc="Chọn môn học và phiên bản để xem các chương và tải video bài giảng lên."
+      />
 
-        {error && (
-          <div className="mt-4 flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            <AlertTriangle size={16} /> {error}
-          </div>
-        )}
+      {error && (
+        <div className="mb-4 flex items-center gap-2  bg-red-50 p-3 text-sm text-red-700">
+          <AlertTriangle size={16} /> {error}
+        </div>
+      )}
 
-        {/* Import ánh xạ học phần <-> môn học từ Excel */}
-        <ImportHocPhanMonHoc />
-
-        {/* Bộ chọn môn + phiên bản */}
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div className="relative block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">
-              Mã môn học
-            </span>
-            <div className="relative">
-              <input
-                type="text"
-                value={monSearch}
-                onChange={(e) => {
-                  setMonSearch(e.target.value)
-                  setShowGoiY(true)
-                  if (monHocId) {
-                    setMonHocId('')
-                    setVersionId('')
-                    setChiTiet([])
-                  }
-                }}
-                onFocus={() => setShowGoiY(true)}
-                onBlur={() => setTimeout(() => setShowGoiY(false), 150)}
-                disabled={loadingMon}
-                placeholder={loadingMon ? 'Đang tải...' : 'Nhập mã môn, ví dụ: 2101420'}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 pr-8 text-sm outline-none focus:border-[#115EA8] disabled:bg-slate-100"
+      {/* Bộ chọn môn + phiên bản */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="relative block">
+          <span className="mb-1 block text-sm font-medium text-slate-700">
+            Mã môn học
+          </span>
+          <div className="relative">
+            <input
+              type="text"
+              value={monSearch}
+              onChange={(e) => {
+                setMonSearch(e.target.value)
+                setShowGoiY(true)
+                if (monHocId) {
+                  setMonHocId('')
+                  setVersionId('')
+                  setChiTiet([])
+                }
+              }}
+              onFocus={() => setShowGoiY(true)}
+              onBlur={() => setTimeout(() => setShowGoiY(false), 150)}
+              disabled={loadingMon}
+              placeholder={loadingMon ? 'Đang tải...' : 'Nhập mã môn, ví dụ: 2101420'}
+              className="w-full  border border-slate-300 px-3 py-2 pr-8 text-sm outline-none focus:border-[#115EA8] disabled:bg-slate-100"
+            />
+            {monHocId ? (
+              <button
+                type="button"
+                onClick={boChonMon}
+                title="Bỏ chọn"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X size={16} />
+              </button>
+            ) : (
+              <Search
+                size={16}
+                className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400"
               />
-              {monHocId ? (
-                <button
-                  type="button"
-                  onClick={boChonMon}
-                  title="Bỏ chọn"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  <X size={16} />
-                </button>
-              ) : (
-                <Search
-                  size={16}
-                  className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400"
-                />
-              )}
-            </div>
-
-            {showGoiY && monSearch.trim() && !monHocId && (
-              <ul className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border border-slate-200 bg-white shadow-lg">
-                {goiYMon.length ? (
-                  goiYMon.map((m) => (
-                    <li key={m.id}>
-                      <button
-                        type="button"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => chonMon(m)}
-                        className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
-                      >
-                        <span className="font-medium text-slate-800">{m.maTuQuan}</span>
-                        <span className="text-slate-500"> — {m.tenMon}</span>
-                      </button>
-                    </li>
-                  ))
-                ) : (
-                  <li className="px-3 py-2 text-sm text-slate-400">
-                    Không tìm thấy môn khớp mã.
-                  </li>
-                )}
-              </ul>
             )}
           </div>
 
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">Phiên bản</span>
-            <select
-              value={versionId}
-              onChange={onChonVersion}
-              disabled={!monDangChon}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#115EA8] disabled:bg-slate-100"
-            >
-              <option value="">-- Chọn phiên bản --</option>
-              {versions.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.version}
-                </option>
-              ))}
-            </select>
-          </label>
+          {showGoiY && monSearch.trim() && !monHocId && (
+            <ul className="absolute z-10 mt-1 max-h-64 w-full overflow-auto  border border-slate-200 bg-white shadow-lg">
+              {goiYMon.length ? (
+                goiYMon.map((m) => (
+                  <li key={m.id}>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => chonMon(m)}
+                      className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                    >
+                      <span className="font-medium text-slate-800">{m.maTuQuan}</span>
+                      <span className="text-slate-500"> — {m.tenMon}</span>
+                    </button>
+                  </li>
+                ))
+              ) : (
+                <li className="px-3 py-2 text-sm text-slate-400">
+                  Không tìm thấy môn khớp mã.
+                </li>
+              )}
+            </ul>
+          )}
         </div>
 
-        {/* Nhập nhanh "mã môn / phiên bản" -> vào thẳng trang xem video */}
-        <form onSubmit={xemNhanh} className="mt-4">
-          <span className="mb-1 block text-sm font-medium text-slate-700">
-            Xem nhanh video theo mã môn / phiên bản
-          </span>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={quickPath}
-              onChange={(e) => setQuickPath(e.target.value)}
-              placeholder="Ví dụ: AV2/v2"
-              className="min-w-0 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#115EA8] sm:max-w-md"
-            />
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium text-slate-700">Phiên bản</span>
+          <select
+            value={versionId}
+            onChange={onChonVersion}
+            disabled={!monDangChon}
+            className="w-full  border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#115EA8] disabled:bg-slate-100"
+          >
+            <option value="">-- Chọn phiên bản --</option>
+            {versions.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.version}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {/* Nhập nhanh "mã môn / phiên bản" -> vào thẳng trang xem video */}
+      <form onSubmit={xemNhanh} className="mt-4">
+        <span className="mb-1 block text-sm font-medium text-slate-700">
+          Xem nhanh video theo mã môn / phiên bản
+        </span>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={quickPath}
+            onChange={(e) => setQuickPath(e.target.value)}
+            placeholder="Ví dụ: AV2/v2"
+            className="min-w-0 flex-1  border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#115EA8] sm:max-w-md"
+          />
+          <button
+            type="submit"
+            disabled={openingPlayer || !quickPath.trim()}
+            className="inline-flex shrink-0 items-center gap-1.5  bg-[#115EA8] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0d4a82] disabled:opacity-60"
+          >
+            {openingPlayer ? (
+              <Loader2 className="animate-spin" size={16} />
+            ) : (
+              <PlayCircle size={16} />
+            )}
+            Xem video
+          </button>
+        </div>
+      </form>
+
+      {/* Nhập nhanh "mã bài giảng" (id tb_BaiGiang) -> xem 1 video riêng lẻ */}
+      <form onSubmit={xemTheoId} className="mt-4">
+        <span className="mb-1 block text-sm font-medium text-slate-700">
+          Xem nhanh video theo mã bài giảng
+        </span>
+        <div className="flex gap-2">
+          <input
+            type="number"
+            min="1"
+            value={quickId}
+            onChange={(e) => setQuickId(e.target.value)}
+            placeholder="Ví dụ: 1002 (local) triển khai: 13, 23..."
+            className="min-w-0 flex-1  border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#115EA8] sm:max-w-md"
+          />
+          <button
+            type="submit"
+            disabled={!quickId.trim()}
+            className="inline-flex shrink-0 items-center gap-1.5  bg-[#115EA8] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0d4a82] disabled:opacity-60"
+          >
+            <PlayCircle size={16} />
+            Xem video
+          </button>
+        </div>
+      </form>
+
+      {/* Danh sách chương + upload */}
+      <div className="mt-8">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 font-semibold text-slate-800">
+            <Layers size={18} /> Chương / Bài giảng
+          </h2>
+          {versionId ? (
             <button
-              type="submit"
-              disabled={openingPlayer || !quickPath.trim()}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-[#115EA8] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0d4a82] disabled:opacity-60"
+              type="button"
+              onClick={moTrangXem}
+              disabled={openingPlayer}
+              className="inline-flex items-center gap-1.5  border border-[#115EA8] px-3 py-1.5 text-sm font-medium text-[#115EA8] transition hover:bg-[#115EA8] hover:text-white disabled:opacity-60"
             >
               {openingPlayer ? (
                 <Loader2 className="animate-spin" size={16} />
               ) : (
-                <PlayCircle size={16} />
+                <ExternalLink size={16} />
               )}
-              Xem video
+              Mở trang xem bài giảng
             </button>
-          </div>
-        </form>
-
-        {/* Nhập nhanh "mã bài giảng" (id tb_BaiGiang) -> xem 1 video riêng lẻ */}
-        <form onSubmit={xemTheoId} className="mt-4">
-          <span className="mb-1 block text-sm font-medium text-slate-700">
-            Xem nhanh video theo mã bài giảng
-          </span>
-          <div className="flex gap-2">
-            <input
-              type="number"
-              min="1"
-              value={quickId}
-              onChange={(e) => setQuickId(e.target.value)}
-              placeholder="Ví dụ: 1002 (local) triển khai: 13, 23..."
-              className="min-w-0 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#115EA8] sm:max-w-md"
-            />
-            <button
-              type="submit"
-              disabled={!quickId.trim()}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-[#115EA8] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0d4a82] disabled:opacity-60"
-            >
-              <PlayCircle size={16} />
-              Xem video
-            </button>
-          </div>
-        </form>
-
-        {/* Danh sách chương + upload */}
-        <div className="mt-8">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="flex items-center gap-2 font-semibold text-slate-800">
-              <Layers size={18} /> Chương / Bài giảng
-            </h2>
-            {versionId ? (
-              <button
-                type="button"
-                onClick={moTrangXem}
-                disabled={openingPlayer}
-                className="inline-flex items-center gap-1.5 rounded-md border border-[#115EA8] px-3 py-1.5 text-sm font-medium text-[#115EA8] transition hover:bg-[#115EA8] hover:text-white disabled:opacity-60"
-              >
-                {openingPlayer ? (
-                  <Loader2 className="animate-spin" size={16} />
-                ) : (
-                  <ExternalLink size={16} />
-                )}
-                Mở trang xem bài giảng
-              </button>
-            ) : null}
-          </div>
-
-          {loadingChiTiet ? (
-            <p className="flex items-center gap-2 text-slate-500">
-              <Loader2 className="animate-spin" size={16} /> Đang tải...
-            </p>
-          ) : !versionId ? (
-            <p className="text-slate-500">Hãy chọn phiên bản môn học.</p>
-          ) : !chiTiet.length ? (
-            <p className="text-slate-500">Phiên bản này chưa có chương đăng ký nào.</p>
-          ) : (
-            <div className="space-y-3">
-              {chiTiet.map((row) => (
-                <ChuongItem
-                  key={row.chiTietId}
-                  row={row}
-                  onUploaded={(patch) => capNhatDong(row.chiTietId, patch)}
-                />
-              ))}
-            </div>
-          )}
+          ) : null}
         </div>
-      </main>
-    </Layout>
-  )
-}
 
-// Import ánh xạ học phần <-> môn học từ file Excel (cột "Mã môn học" + "Mã lớp học phần").
-// Parse Excel ở FE (SheetJS) rồi gửi mảng { MaMon, MaHocPhan } lên backend.
-function ImportHocPhanMonHoc() {
-  const [rows, setRows] = useState([])
-  const [fileName, setFileName] = useState('')
-  const [parsing, setParsing] = useState(false)
-  const [importing, setImporting] = useState(false)
-  const [msg, setMsg] = useState('')
-  const [err, setErr] = useState('')
-
-  const reset = () => {
-    setRows([])
-    setFileName('')
-    setMsg('')
-    setErr('')
-  }
-
-  const chonFile = async (e) => {
-    const file = e.target.files?.[0]
-    e.target.value = '' // cho phép chọn lại cùng một file
-    if (!file) return
-    setErr('')
-    setMsg('')
-    setRows([])
-    setFileName(file.name)
-    setParsing(true)
-    try {
-      const parsed = await hocPhanMonHocService.parseExcel(file)
-      if (!parsed.length) {
-        setErr('Không đọc được dòng nào. File cần có cột "Mã môn học" và "Mã lớp học phần".')
-      }
-      setRows(parsed)
-    } catch {
-      setErr('File không hợp lệ. Hãy chọn file Excel (.xlsx / .xls).')
-    } finally {
-      setParsing(false)
-    }
-  }
-
-  const doImport = async () => {
-    if (!rows.length) return
-    setImporting(true)
-    setErr('')
-    setMsg('')
-    try {
-      const res = await hocPhanMonHocService.importRows(rows)
-      setMsg(
-        `Đã thêm ${res.added} dòng mới, bỏ qua ${res.skipped} dòng trùng (tổng ${res.total}).`
-      )
-      setRows([])
-      setFileName('')
-    } catch (e) {
-      setErr(e?.response?.data?.message || 'Import thất bại')
-    } finally {
-      setImporting(false)
-    }
-  }
-
-  return (
-    <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 font-semibold text-slate-800">
-          <FileSpreadsheet size={18} /> Import học phần &ndash; môn học (Excel)
-        </h2>
-      </div>
-      <p className="mt-1 text-sm text-slate-500">
-        File Excel cần 2 cột: <b>Mã môn học</b> và <b>Mã lớp học phần</b>.
-      </p>
-
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
-          {parsing ? (
-            <Loader2 className="animate-spin" size={16} />
-          ) : (
-            <Upload size={16} />
-          )}
-          Chọn file Excel
-          <input
-            type="file"
-            accept=".xlsx,.xls"
-            onChange={chonFile}
-            disabled={parsing || importing}
-            className="hidden"
-          />
-        </label>
-
-        {fileName && (
-          <span className="text-sm text-slate-500">
-            {fileName}
-            {rows.length > 0 && ` — ${rows.length} dòng hợp lệ`}
-          </span>
-        )}
-
-        {rows.length > 0 && (
-          <>
-            <button
-              type="button"
-              onClick={doImport}
-              disabled={importing}
-              className="inline-flex items-center gap-1.5 rounded-md bg-[#115EA8] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0d4a82] disabled:opacity-60"
-            >
-              {importing ? (
-                <Loader2 className="animate-spin" size={16} />
-              ) : (
-                <CheckCircle2 size={16} />
-              )}
-              Import {rows.length} dòng
-            </button>
-            <button
-              type="button"
-              onClick={reset}
-              disabled={importing}
-              className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-60"
-            >
-              <Trash2 size={16} /> Hủy
-            </button>
-          </>
+        {loadingChiTiet ? (
+          <p className="flex items-center gap-2 text-slate-500">
+            <Loader2 className="animate-spin" size={16} /> Đang tải...
+          </p>
+        ) : !versionId ? (
+          <p className="text-slate-500">Hãy chọn phiên bản môn học.</p>
+        ) : !chiTiet.length ? (
+          <p className="text-slate-500">Phiên bản này chưa có chương đăng ký nào.</p>
+        ) : (
+          <div className="space-y-3">
+            {chiTiet.map((row) => (
+              <ChuongItem
+                key={row.chiTietId}
+                row={row}
+                onUploaded={(patch) => capNhatDong(row.chiTietId, patch)}
+              />
+            ))}
+          </div>
         )}
       </div>
-
-      {rows.length > 0 && (
-        <div className="mt-3 max-h-64 overflow-auto rounded-md border border-slate-200">
-          <table className="w-full text-left text-sm">
-            <thead className="sticky top-0 bg-slate-50 text-slate-600">
-              <tr>
-                <th className="px-3 py-2 font-medium">#</th>
-                <th className="px-3 py-2 font-medium">Mã môn học</th>
-                <th className="px-3 py-2 font-medium">Mã lớp học phần</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r, i) => (
-                <tr key={`${r.MaHocPhan}-${r.MaMon}-${i}`} className="border-t border-slate-100">
-                  <td className="px-3 py-1.5 text-slate-400">{i + 1}</td>
-                  <td className="px-3 py-1.5 text-slate-700">{r.MaMon}</td>
-                  <td className="px-3 py-1.5 text-slate-700">{r.MaHocPhan}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {msg && (
-        <p className="mt-2 flex items-center gap-1.5 text-sm text-[#115EA8]">
-          <CheckCircle2 size={15} /> {msg}
-        </p>
-      )}
-      {err && (
-        <p className="mt-2 flex items-center gap-1.5 text-sm text-red-600">
-          <AlertTriangle size={15} /> {err}
-        </p>
-      )}
-    </div>
+    </>
   )
 }
 
@@ -580,7 +416,7 @@ function ChuongItem({ row, onUploaded }) {
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div className=" border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-medium text-slate-800">{row.NoiDungChuong}</p>
@@ -598,7 +434,7 @@ function ChuongItem({ row, onUploaded }) {
             <p className="mt-2 text-xs text-amber-600">Chưa có video</p>
           )}
           {preview && previewSrc && (
-            <div className="mt-2 aspect-video w-full max-w-md overflow-hidden rounded-md bg-black">
+            <div className="mt-2 aspect-video w-full max-w-md overflow-hidden  bg-black">
               <HlsPlayer src={previewSrc} className="h-full w-full" />
             </div>
           )}
@@ -616,7 +452,7 @@ function ChuongItem({ row, onUploaded }) {
             type="button"
             onClick={upload}
             disabled={!file || uploading}
-            className="flex items-center gap-1.5 rounded-md bg-[#115EA8] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#0d4a82] disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex items-center gap-1.5  bg-[#115EA8] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#0d4a82] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {uploading ? (
               <Loader2 className="animate-spin" size={16} />

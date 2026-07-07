@@ -6,8 +6,8 @@ const { ensureBucket } = require('./config/minio');
 const luotXem = require('./services/luotXem.service');
 
 const result = require('dotenv').config();
-console.log('dotenv result:', result);
-console.log('DB_USER:', process.env.DB_USER);
+// console.log('dotenv result:', result);
+// console.log('DB_USER:', process.env.DB_USER);
 
 const PORT = process.env.PORT || 3000;
 
