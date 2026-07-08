@@ -251,9 +251,13 @@ async function getThongKeDanhGia(baiGiangId) {
   });
   const tk = rows[0];
 
+  // Lượt xem lấy từ chính bản ghi bài giảng (tb_BaiGiang.LuotXem), độc lập với đánh giá.
+  const bg = await BaiGiang.findByPk(baiGiangId, { attributes: ['LuotXem'], raw: true });
+
   return {
     total: tk.tongSo,
     average: tk.diemTrungBinh ? Number(tk.diemTrungBinh) : 0,
+    views: bg?.LuotXem ?? 0,
     distribution: { 1: tk.sao1, 2: tk.sao2, 3: tk.sao3, 4: tk.sao4, 5: tk.sao5 },
   };
 }

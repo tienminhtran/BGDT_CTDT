@@ -104,7 +104,7 @@ export default function DanhGiaPage() {
                 icon={Eye}
                 mau="text-[#43a811]"
                 nhan="Lượt xem"
-                giaTri={luotXem ?? '—'}
+                giaTri={luotXem != null ? luotXem : '—'}
               />
             </div>
 
