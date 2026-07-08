@@ -91,7 +91,7 @@ export default function ManualPage() {
           </p>
 
           {/* Chip 4 bước tóm tắt */}
-          <div className="mx-auto mt-8 flex max-w-3xl flex-wrap items-center justify-center gap-2 text-sm">
+          <div className="mx-auto mt-8 flex max-w-xl flex-wrap items-center justify-center gap-2 text-sm">
             {STEPS.map((s, i) => (
               <span key={s.title} className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1.5 backdrop-blur">

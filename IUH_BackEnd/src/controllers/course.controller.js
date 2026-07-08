@@ -19,7 +19,7 @@ exports.list = async (req, res, next) => {
     const header = req.headers.authorization || '';
     const wstoken = header.startsWith('Bearer ') ? header.slice(7) : null;
     if (!wstoken) {
-      return res.status(401).json({ message: 'Chưa đăng nhập' });
+      return res.status(401).json({ message: 'Tài khoản chưa đăng nhập' });
     }
 
     // Lấy userid từ chính wstoken (đồng thời xác thực token còn sống)
@@ -39,7 +39,7 @@ exports.list = async (req, res, next) => {
         coVideoSet = await baiGiang.getMaMonCoVideo(Object.values(monMap).flat());
       }
     } catch (dbErr) {
-      console.error('Không tra được MaMon/tình trạng video từ DB:', dbErr.message);
+      console.error('Không tra được Mã môn học và tình trạng video từ hệ thống:', dbErr.message);
     }
 
     // Bỏ khóa không có idnumber (không map được học phần) -> không trả ra client.
@@ -55,6 +55,12 @@ exports.list = async (req, res, next) => {
         maMon && coVideoSet.has(maMon) ? encodeCourse({ maMon, version: null }) : null;
       // KHÔNG trả maHocPhan/maMon/monHoc ra client (lộ map nội bộ). Chỉ trả token mờ.
       return { ...mapCourse(c), token };
+    });
+
+    // Sắp xếp: môn có token (xem được bài giảng) lên trước, sau đó theo tên (fullname) A→Z.
+    result.sort((a, b) => {
+      if (Boolean(a.token) !== Boolean(b.token)) return a.token ? -1 : 1;
+      return (a.fullname || '').localeCompare(b.fullname || '', 'vi');
     });
 
     res.json({ courses: result });
