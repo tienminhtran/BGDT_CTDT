@@ -13,7 +13,7 @@ const minioClient = new Minio.Client({
     port: portStr ? parseInt(portStr, 10) : useSSL ? 443 : 80,
     useSSL,
     accessKey: process.env.MINIO_ACCESS_KEY || process.env.MINIO_ROOT_USER || 'minioadmin',
-    secretKey: process.env.MINIO_SECRET_KEY || process.env.MINIO_ROOT_PASSWORD || 'tranminhtien@2026@dichomuabanh',
+    secretKey: process.env.MINIO_SECRET_KEY || process.env.MINIO_ROOT_PASSWORD || 'minioadmin',
 });
 
 const BUCKET = process.env.MINIO_BUCKET || 'baigiang';

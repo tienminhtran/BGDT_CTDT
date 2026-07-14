@@ -78,8 +78,9 @@ export function AuthProvider({ children }) {
     return clearLogoutTimer
   }, [logout, scheduleAutoLogout])
 
-  const login = useCallback(async (username, password) => {
-    const { token } = await authService.login(username, password)
+  // captcha (tùy chọn) = { captchaToken, captchaText }; form chỉ gửi khi backend yêu cầu.
+  const login = useCallback(async (username, password, captcha) => {
+    const { token } = await authService.login(username, password, captcha)
     const loginAt = Date.now()
     localStorage.setItem(STORAGE_KEYS.token, token)
     localStorage.setItem(STORAGE_KEYS.loginAt, String(loginAt))

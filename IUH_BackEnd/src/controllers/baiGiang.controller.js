@@ -186,7 +186,7 @@ exports.streamHls = async (req, res, next) => {
     const id = parseInt(req.params.id, 10);
     // Vé phát chỉ nằm ở cookie HttpOnly (không nhận qua URL -> không copy/paste được).
     const token = readHlsCookie(req, id);
-    if (!token) return res.status(401).json({ message: 'Thiếu token' });
+    if (!token) return res.status(401).json({ message: 'Thiếu token, không thể phát video, vui lòng liên hệ Phòng Đào tạo' });
 
     let payload;
     try {

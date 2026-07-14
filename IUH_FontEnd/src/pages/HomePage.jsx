@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BookOpen } from 'lucide-react'
+import { BookOpen, RefreshCcw } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { authService } from '../services'
 import { ROUTES } from '../constants'
 import bgImage from '../assets/bg.jpg'
 import logo from '../assets/logo.svg'
@@ -190,18 +191,64 @@ function LoginForm({ login }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // Chống dò mật khẩu: sai nhiều lần -> backend bắt nhập captcha (428);
+  // sai quá ngưỡng -> khóa tài khoản tạm thời (429 + retryAfter giây).
+  const [captcha, setCaptcha] = useState(null) // { captchaToken, image }
+  const [captchaText, setCaptchaText] = useState('')
+  const [khoaConLai, setKhoaConLai] = useState(0)
+
+  const lamMoiCaptcha = async () => {
+    setCaptchaText('')
+    try {
+      setCaptcha(await authService.getCaptcha())
+    } catch (_) {
+      setCaptcha(null)
+    }
+  }
+
+  // Hỏi backend khi rời ô MSSV: tài khoản này đã tới ngưỡng phải nhập captcha chưa
+  // -> hiện sẵn ô captcha thay vì bắt SV thử sai một lần rồi mới hiện.
+  const kiemTraTrangThai = async () => {
+    if (!username.trim()) return
+    try {
+      const tt = await authService.getLoginStatus(username.trim())
+      if (tt.locked) setKhoaConLai(tt.retryAfter)
+      if (tt.captchaRequired && !captcha) await lamMoiCaptcha()
+    } catch (_) {
+      /* không chặn đăng nhập nếu API trạng thái lỗi */
+    }
+  }
+
+  // Đếm ngược thời gian khóa; hết giờ thì mở lại nút đăng nhập.
+  useEffect(() => {
+    if (khoaConLai <= 0) return
+    const t = setInterval(() => setKhoaConLai((s) => (s <= 1 ? 0 : s - 1)), 1000)
+    return () => clearInterval(t)
+  }, [khoaConLai])
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (khoaConLai > 0) return
     setLoading(true)
     setError('')
 
     try {
-      await login(username, password)
+      await login(username, password, captcha ? { captchaToken: captcha.captchaToken, captchaText } : undefined)
     } catch (err) {
-      setError(err?.response?.data?.message || 'Sai tài khoản hoặc mật khẩu')
+      const status = err?.response?.status
+      const data = err?.response?.data || {}
+      setError(data.message || 'Sai tài khoản hoặc mật khẩu')
+
+      if (status === 429 && data.retryAfter) {
+        setKhoaConLai(data.retryAfter)
+        setCaptcha(null)
+      } else if (status === 428 || data.captchaRequired) {
+        // Cần captcha (hoặc captcha vừa nhập sai/đã dùng) -> luôn lấy mã mới, 1 mã chỉ dùng 1 lần.
+        await lamMoiCaptcha()
+      }
+      setPassword('')
     } finally {
       setLoading(false)
-      setPassword('')
     }
   }
 
@@ -257,6 +304,7 @@ function LoginForm({ login }) {
               placeholder="Nhập MSSV"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              onBlur={kiemTraTrangThai}
               className="w-full rounded-sm border border-gray-300 px-4 py-3 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
             />
           </div>
@@ -275,17 +323,60 @@ function LoginForm({ login }) {
             />
           </div>
 
+          {/* Captcha: chỉ hiện sau khi sai mật khẩu nhiều lần (backend yêu cầu) */}
+          {captcha && khoaConLai === 0 && (
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Mã xác nhận
+              </label>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="text"
+                  placeholder="Nhập mã trong ảnh"
+                  value={captchaText}
+                  onChange={(e) => setCaptchaText(e.target.value)}
+                  autoComplete="off"
+                  className="min-w-0 flex-1 rounded-sm border border-gray-300 px-4 py-3 tracking-widest outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+                />
+
+                <img
+                  src={captcha.image}
+                  alt="Mã xác nhận"
+                  title="Bấm để đổi mã khác"
+                  onClick={lamMoiCaptcha}
+                  className="h-[50px] cursor-pointer rounded-sm border border-gray-300"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={lamMoiCaptcha}
+                className="mt-1 text-xs text-blue-600 hover:underline"
+              >
+                <RefreshCcw size={14} className="inline-block" />
+                Đổi mã khác
+              </button>
+            </div>
+          )}
+
           {error && (
             <div className="rounded-sm border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
               {error}
+              {khoaConLai > 0 && ` (còn ${khoaConLai}s)`}
             </div>
           )}
 
           <button
             type="submit"
+            disabled={loading || khoaConLai > 0}
             className="w-full rounded-sm bg-blue-700 py-3 text-lg font-semibold text-white transition hover:bg-blue-800 disabled:bg-blue-300"
           >
-            {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+            {khoaConLai > 0
+              ? `Tạm khóa - thử lại sau ${khoaConLai}s`
+              : loading
+                ? 'Đang đăng nhập...'
+                : 'Đăng nhập'}
           </button>
         </form>
 

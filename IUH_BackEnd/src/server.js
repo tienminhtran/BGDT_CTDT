@@ -4,6 +4,7 @@ const app = require('./app');
 const { getPool } = require('./config/db');
 const { ensureBucket } = require('./config/minio');
 const luotXem = require('./services/luotXem.service');
+const loginGuard = require('./services/loginGuard.service');
 
 const result = require('dotenv').config();
 // console.log('dotenv result:', result);
@@ -25,6 +26,11 @@ async function start() {
       console.log(`2.Server đang chạy tại http://localhost:${PORT}`);
       // Bật cron gộp lượt xem (buffer RAM -> UPDATE định kỳ).
       luotXem.startFlushLoop();
+
+      // Dọn bộ đếm đăng nhập sai / khóa / captcha đã hết hạn (mỗi 10 phút).
+      const donRac = () => loginGuard.donRacHetHan().catch(() => {});
+      donRac();
+      setInterval(donRac, 10 * 60 * 1000).unref();
     });
   } catch (err) {
     console.error('Không thể khởi động server:', err.message);

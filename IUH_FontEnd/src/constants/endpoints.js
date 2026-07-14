@@ -5,6 +5,8 @@ export const ENDPOINTS = {
     login: '/auth/login',
     me: '/auth/me',
     logout: '/auth/logout',
+    captcha: '/auth/captcha', // -> { captchaToken, image (base64), expiresIn }
+    loginStatus: '/auth/login-status', // ?username=... -> { locked, retryAfter, captchaRequired }
   },
   courses: '/courses',
   subjects: '/subjects',

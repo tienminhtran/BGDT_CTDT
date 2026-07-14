@@ -7,6 +7,10 @@ const errorHandler = require('./middlewares/errorHandler');
 
 const app = express();
 
+// Sau nginx/reverse proxy: đọc X-Forwarded-For để req.ip là IP thật của client,
+// nếu không mọi request đều mang IP của proxy -> bộ đếm chống dò mật khẩu vô nghĩa.
+app.set('trust proxy', true);
+
 // Middlewares
 // HLS xác thực bằng cookie HttpOnly -> phải bật credentials và echo đúng origin
 // (Access-Control-Allow-Origin '*' + credentials không được phép theo spec CORS).
