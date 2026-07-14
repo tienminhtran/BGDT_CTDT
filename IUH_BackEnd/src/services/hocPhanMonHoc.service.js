@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { HocPhanMonHoc } = require('../models/orm');
+const { HocPhanMonHoc, Monhoc, MonhocVersion } = require('../models/orm');
 
 // Khóa duy nhất cho 1 ánh xạ (học phần <-> môn) để dò trùng.
 const keyOf = (r) => `${r.MaHocPhan}|${r.MaMon}`;
@@ -51,4 +51,82 @@ async function importHocPhanMonHoc(rows) {
   };
 }
 
-module.exports = { importHocPhanMonHoc };
+/**
+ * Toàn bộ ánh xạ học phần <-> môn học đã import, kèm TÊN môn (tb_monhoc) và
+ * danh sách PHIÊN BẢN của môn (tb_monhoc_version) để FE mở rộng dòng xem chi tiết.
+ *
+ * Ghép bằng 3 query rồi map trong JS (MaMon <-> tb_monhoc.ma_tuquan không phải
+ * khóa ngoại nên không khai báo association).
+ *
+ * @returns {Promise<Array<{ id, maHocPhan, maMon, tenMon, versions: Array<{id, version}> }>>}
+ */
+async function danhSachAnhXa() {
+  const tatCa = await HocPhanMonHoc.findAll({
+    attributes: ['id', 'MaHocPhan', 'MaMon'],
+    order: [
+      ['MaHocPhan', 'ASC'],
+      ['MaMon', 'ASC'],
+      ['id', 'ASC'],
+    ],
+    raw: true,
+  });
+
+  // Dữ liệu cũ có thể có nhiều dòng cùng (MaHocPhan, MaMon) -> chỉ giữ 1 (id nhỏ nhất).
+  const theoCap = new Map();
+  for (const r of tatCa) {
+    if (!theoCap.has(keyOf(r))) theoCap.set(keyOf(r), r);
+  }
+  const rows = [...theoCap.values()];
+
+  const monHoc = await Monhoc.findAll({
+    attributes: ['id', 'ma_tuquan', 'tenmon'],
+    where: { ma_tuquan: { [Op.in]: [...new Set(rows.map((r) => r.MaMon))] } },
+    raw: true,
+  });
+
+  const versions = await MonhocVersion.findAll({
+    attributes: ['id', 'id_monhoc', 'version'],
+    where: { id_monhoc: { [Op.in]: monHoc.map((m) => m.id) } },
+    order: [['version', 'ASC']],
+    raw: true,
+  });
+
+  // id môn -> [{ id, version }]
+  const versionTheoMon = new Map();
+  for (const v of versions) {
+    const ds = versionTheoMon.get(String(v.id_monhoc)) ?? [];
+    ds.push({ id: v.id, version: v.version });
+    versionTheoMon.set(String(v.id_monhoc), ds);
+  }
+
+  const monTheoMa = new Map(monHoc.map((m) => [m.ma_tuquan, m]));
+
+  return rows.map((r) => {
+    const mon = monTheoMa.get(r.MaMon);
+    return {
+      id: r.id,
+      maHocPhan: r.MaHocPhan,
+      maMon: r.MaMon,
+      // Môn có trong ánh xạ nhưng chưa có trong tb_monhoc -> null, FE hiện cảnh báo.
+      tenMon: mon?.tenmon ?? null,
+      versions: mon ? (versionTheoMon.get(String(mon.id)) ?? []) : [],
+    };
+  });
+}
+
+/**
+ * Xóa 1 ánh xạ theo id. Vì danh sách đã gộp trùng, xóa phải quét theo CẶP
+ * (MaHocPhan, MaMon) — nếu chỉ xóa đúng id thì các dòng trùng còn lại vẫn hiện.
+ *
+ * @returns {Promise<number>} số dòng đã xóa (0 = không tìm thấy)
+ */
+async function xoaAnhXa(id) {
+  const row = await HocPhanMonHoc.findByPk(id, { attributes: ['MaHocPhan', 'MaMon'] });
+  if (!row) return 0;
+
+  return HocPhanMonHoc.destroy({
+    where: { MaHocPhan: row.MaHocPhan, MaMon: row.MaMon },
+  });
+}
+
+module.exports = { importHocPhanMonHoc, danhSachAnhXa, xoaAnhXa };

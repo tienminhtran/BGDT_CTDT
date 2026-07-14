@@ -186,6 +186,24 @@ async function danhDauCaptchaDaDung(jti, exp) {
   }
 }
 
+/**
+ * Mở khóa 1 tài khoản: bỏ khóa và xóa luôn bộ đếm số lần sai (theo username và
+ * theo cặp username|ip), để SV đăng nhập lại được ngay mà không dính captcha.
+ * @returns {Promise<number>} số dòng đã xóa (0 = tài khoản vốn không bị khóa)
+ */
+async function moKhoaTaiKhoan(username) {
+  const u = chuanHoaUsername(username);
+  return LoginAttempt.destroy({
+    where: {
+      [Op.or]: [
+        { Scope: 'lock', ScopeKey: u },
+        { Scope: 'user', ScopeKey: u },
+        { Scope: 'user_ip', ScopeKey: { [Op.like]: `${u}|%` } },
+      ],
+    },
+  });
+}
+
 // Dọn các dòng đã hết hạn (bộ đếm, khóa, captcha đã dùng). Gọi định kỳ từ server.js.
 async function donRacHetHan() {
   await LoginAttempt.destroy({ where: { ExpiresAt: { [Op.lt]: new Date() } } });
@@ -197,6 +215,7 @@ module.exports = {
   thoiGianKhoaConLai,
   ghiNhanDangNhapSai,
   xoaBoDem,
+  moKhoaTaiKhoan,
   danhDauCaptchaDaDung,
   donRacHetHan,
   NGUONG_CAPTCHA,

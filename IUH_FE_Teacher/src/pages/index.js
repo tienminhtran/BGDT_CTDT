@@ -2,5 +2,7 @@
 export { default as QuanLyBaiGiangPage } from './QuanLyBaiGiangPage'
 export { default as ImportPage } from './ImportPage'
 export { default as DanhGiaPage } from './DanhGiaPage'
+export { default as ThongTinSinhVienPage } from './ThongTinSinhVienPage'
+export { default as ThuMucVideoPage } from './ThuMucVideoPage'
 export { default as CoursePlayerPage } from './CoursePlayerPage'
 export { default as VideoTheoIdPage } from './VideoTheoIdPage'

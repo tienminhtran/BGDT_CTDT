@@ -1,5 +1,6 @@
-const { Op } = require('sequelize');
-const { SinhVienHocPhan, HocPhanMonHoc } = require('../models/orm');
+const { Op, fn, col } = require('sequelize');
+const { SinhVienHocPhan, HocPhanMonHoc, LoginAttempt } = require('../models/orm');
+const loginGuard = require('./loginGuard.service');
 
 /**
  * Cắt bỏ 2 ký tự cuối của mã học phần.
@@ -94,10 +95,77 @@ async function getMonHocByHocPhan(maHocPhanList) {
   return map;
 }
 
+/**
+ * Danh sách sinh viên cho màn "Thông tin sinh viên":
+ * mỗi SV 1 dòng (gộp từ tb_SinhVienHocPhan) kèm trạng thái đăng nhập lấy từ
+ * bộ đếm chống dò mật khẩu (tb_LoginAttempt).
+ *
+ * Trả về TOÀN BỘ danh sách, FE tự tìm kiếm/phân trang (số SV ở quy mô này còn nhỏ).
+ * Khi dữ liệu lớn lên thì chuyển sang phân trang phía server.
+ *
+ * @returns {Promise<Array<{ mssv, soHocPhan, soLanSai, dangKhoa, khoaConLai }>>}
+ */
+async function danhSachSinhVien() {
+  const rows = await SinhVienHocPhan.findAll({
+    attributes: ['MaSinhVien', [fn('COUNT', col('MaHocPhan')), 'soHocPhan']],
+    group: ['MaSinhVien'],
+    order: [['MaSinhVien', 'ASC']],
+    raw: true,
+  });
+
+  // loginGuard lưu ScopeKey là username đã chuẩn hóa (trim + lowercase).
+  const khoa = (mssv) => String(mssv ?? '').trim().toLowerCase();
+
+  const attempts = await LoginAttempt.findAll({
+    attributes: ['Scope', 'ScopeKey', 'FailCount', 'ExpiresAt'],
+    where: {
+      Scope: { [Op.in]: ['lock', 'user'] },
+      ScopeKey: { [Op.in]: rows.map((r) => khoa(r.MaSinhVien)) },
+      ExpiresAt: { [Op.gt]: new Date() }, // hết hạn = coi như không có
+    },
+    raw: true,
+  });
+
+  const dangKhoa = new Map(); // mssv -> thời điểm mở khóa
+  const soLanSai = new Map(); // mssv -> số lần sai trong cửa sổ hiện tại
+  for (const a of attempts) {
+    if (a.Scope === 'lock') dangKhoa.set(a.ScopeKey, a.ExpiresAt);
+    else soLanSai.set(a.ScopeKey, a.FailCount);
+  }
+
+  const bayGio = Date.now();
+  return rows.map((r) => {
+    const k = khoa(r.MaSinhVien);
+    const moKhoaLuc = dangKhoa.get(k);
+    return {
+      mssv: r.MaSinhVien,
+      soHocPhan: Number(r.soHocPhan) || 0,
+      soLanSai: soLanSai.get(k) ?? 0,
+      dangKhoa: !!moKhoaLuc,
+      khoaConLai: moKhoaLuc
+        ? Math.max(0, Math.ceil((new Date(moKhoaLuc).getTime() - bayGio) / 1000))
+        : 0,
+    };
+  });
+}
+
+/**
+ * Xóa 1 sinh viên khỏi bảng học phần (mất hết ánh xạ SV -> học phần, tức SV sẽ
+ * không xem được bài giảng nào nữa) và dọn luôn bộ đếm đăng nhập của SV đó.
+ * @returns {Promise<number>} số dòng học phần đã xóa
+ */
+async function xoaSinhVien(mssv) {
+  const daXoa = await SinhVienHocPhan.destroy({ where: { MaSinhVien: mssv } });
+  await loginGuard.moKhoaTaiKhoan(mssv);
+  return daXoa;
+}
+
 module.exports = {
   catHaiSoCuoi,
   getHocPhanByMssv,
   importHocPhan,
   kiemTraSinhVienHocMon,
   getMonHocByHocPhan,
+  danhSachSinhVien,
+  xoaSinhVien,
 };

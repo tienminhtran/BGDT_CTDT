@@ -31,6 +31,10 @@ router.use('/lectures', baiGiangRoutes);
 const danhGiaRoutes = require('./danhGiaBaiGiang.routes');
 router.use('/reviews', danhGiaRoutes);
 
+// Thư mục video bài giảng trên MinIO (chỉ đọc)
+const luuTruRoutes = require('./luuTru.routes');
+router.use('/storage', luuTruRoutes);
+
 const exampleRoutes = require('./example.routes');
 router.use('/examples', exampleRoutes);
 

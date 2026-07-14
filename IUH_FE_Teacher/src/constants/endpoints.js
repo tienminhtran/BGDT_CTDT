@@ -12,9 +12,23 @@ export const ENDPOINTS = {
     teacher: (lectureId) => `/lectures/${lectureId}/teacher`, // xem 1 video theo id (giảng viên)
   },
   reviews: {
+    overview: '/reviews/overview', // GET -> thống kê theo phiên bản môn (giảng viên)
+    // GET -> bình luận của 1 phiên bản môn (để xuất Excel)
+    comments: (versionId) => `/reviews/overview/${versionId}/comments`,
     byLecture: (lectureId) => `/reviews/${lectureId}`,
   },
   courseSubjects: {
+    list: '/course-subjects', // GET -> ánh xạ đã import, kèm tên môn
     import: '/course-subjects/import', // POST { rows: [{ MaMon, MaHocPhan }] }
+    remove: (id) => `/course-subjects/${id}`, // DELETE
+  },
+  storage: {
+    list: '/storage', // GET ?prefix=... -> nội dung 1 cấp thư mục MinIO
+    summary: '/storage/summary', // GET ?prefix=... -> tổng file + dung lượng
+  },
+  students: {
+    list: '/student-courses', // GET -> danh sách SV + trạng thái khóa đăng nhập
+    remove: (mssv) => `/student-courses/${mssv}`, // DELETE
+    unlock: (mssv) => `/student-courses/${mssv}/unlock`, // POST
   },
 }

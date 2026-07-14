@@ -95,3 +95,24 @@ exports.cuaToi = async (req, res, next) => {
     next(err);
   }
 };
+
+// GET /api/reviews/overview  (x-teacher-key)
+// Thống kê theo phiên bản môn: số video, tổng lượt xem, sao trung bình.
+exports.tongQuan = async (req, res, next) => {
+  try {
+    res.json({ items: await danhGia.thongKeTheoPhienBan() });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /api/reviews/overview/:versionId/comments  (x-teacher-key)
+// Danh sách bình luận của 1 phiên bản môn -> FE xuất ra Excel.
+exports.binhLuanTheoPhienBan = async (req, res, next) => {
+  try {
+    const items = await danhGia.danhSachBinhLuanTheoPhienBan(req.params.versionId);
+    res.json({ items });
+  } catch (err) {
+    next(err);
+  }
+};

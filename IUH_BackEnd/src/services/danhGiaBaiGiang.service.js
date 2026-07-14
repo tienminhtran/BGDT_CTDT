@@ -262,11 +262,175 @@ async function getThongKeDanhGia(baiGiangId) {
   };
 }
 
+/**
+ * Thống kê cho màn "Quản lý đánh giá": mỗi PHIÊN BẢN MÔN (tb_monhoc_version) 1 dòng,
+ * kèm mã tự quản của môn, số video, tổng lượt xem và điểm sao trung bình của các
+ * bài giảng thuộc phiên bản đó.
+ *
+ * Đường nối: MonhocVersion -> DangKyBaiGiang -> ChiTietDangKyBaiGiang -> BaiGiang -> DanhGiaBaiGiang
+ * Gom bằng vài query rồi cộng dồn trong JS (dữ liệu ở quy mô này còn nhỏ), thay vì
+ * 1 câu JOIN + GROUP BY nhiều tầng khó đọc.
+ *
+ * @returns {Promise<Array<{
+ *   versionId, version, maTuQuan, tenMon,
+ *   soBaiGiang, soVideo, tongLuotXem, soDanhGia, saoTrungBinh
+ * }>>}
+ */
+async function thongKeTheoPhienBan() {
+  const versions = await MonhocVersion.findAll({
+    attributes: ['id', 'version'],
+    include: [
+      {
+        model: Monhoc,
+        as: 'Monhoc',
+        attributes: ['ma_tuquan', 'tenmon'],
+        required: false,
+      },
+    ],
+  });
+
+  // versionId <- dangKyId <- chiTietId <- baiGiang
+  const dangKy = await DangKyBaiGiang.findAll({
+    attributes: ['Id', 'MonHocVersionId'],
+    raw: true,
+  });
+  const versionTheoDangKy = new Map(dangKy.map((d) => [String(d.Id), String(d.MonHocVersionId)]));
+
+  const chiTiet = await ChiTietDangKyBaiGiang.findAll({
+    attributes: ['Id', 'DangKyBaiGiangId'],
+    raw: true,
+  });
+  const dangKyTheoChiTiet = new Map(chiTiet.map((c) => [String(c.Id), String(c.DangKyBaiGiangId)]));
+
+  const baiGiang = await BaiGiang.findAll({
+    attributes: ['Id', 'ChiTietDangKyBaiGiangId', 'LinkBaiGiang', 'LuotXem'],
+    raw: true,
+  });
+
+  // Mọi đánh giá (chỉ cần bài giảng + số sao) -> cộng dồn theo phiên bản.
+  const danhGia = await DanhGiaBaiGiang.findAll({
+    attributes: ['BaiGiangId', 'SoSao'],
+    raw: true,
+  });
+  const saoTheoBaiGiang = new Map(); // baiGiangId -> { tong, soLuong }
+  for (const d of danhGia) {
+    const k = String(d.BaiGiangId);
+    const o = saoTheoBaiGiang.get(k) ?? { tong: 0, soLuong: 0 };
+    o.tong += Number(d.SoSao) || 0;
+    o.soLuong += 1;
+    saoTheoBaiGiang.set(k, o);
+  }
+
+  // versionId -> số liệu cộng dồn
+  const tk = new Map();
+  const lay = (versionId) => {
+    const o = tk.get(versionId) ?? {
+      soBaiGiang: 0,
+      soVideo: 0,
+      tongLuotXem: 0,
+      tongSao: 0,
+      soDanhGia: 0,
+    };
+    tk.set(versionId, o);
+    return o;
+  };
+
+  for (const bg of baiGiang) {
+    const dangKyId = dangKyTheoChiTiet.get(String(bg.ChiTietDangKyBaiGiangId));
+    const versionId = dangKyId ? versionTheoDangKy.get(dangKyId) : null;
+    if (!versionId) continue; // bài giảng mồ côi (chương/đăng ký đã bị xóa)
+
+    const o = lay(versionId);
+    o.soBaiGiang += 1;
+    if (bg.LinkBaiGiang) o.soVideo += 1; // có LinkBaiGiang = đã upload video
+    o.tongLuotXem += Number(bg.LuotXem) || 0;
+
+    const sao = saoTheoBaiGiang.get(String(bg.Id));
+    if (sao) {
+      o.tongSao += sao.tong;
+      o.soDanhGia += sao.soLuong;
+    }
+  }
+
+  return versions
+    .map((v) => {
+      const o = tk.get(String(v.id)) ?? {
+        soBaiGiang: 0,
+        soVideo: 0,
+        tongLuotXem: 0,
+        tongSao: 0,
+        soDanhGia: 0,
+      };
+      return {
+        versionId: v.id,
+        version: v.version,
+        maTuQuan: v.Monhoc?.ma_tuquan ?? null,
+        tenMon: v.Monhoc?.tenmon ?? null,
+        soBaiGiang: o.soBaiGiang,
+        soVideo: o.soVideo,
+        tongLuotXem: o.tongLuotXem,
+        soDanhGia: o.soDanhGia,
+        saoTrungBinh: o.soDanhGia ? Number((o.tongSao / o.soDanhGia).toFixed(2)) : 0,
+      };
+    })
+    .sort((a, b) => (a.tenMon || '').localeCompare(b.tenMon || '', 'vi'));
+}
+
+/**
+ * Toàn bộ đánh giá/bình luận của 1 PHIÊN BẢN MÔN (mọi bài giảng thuộc phiên bản đó),
+ * dùng cho nút xuất Excel ở màn "Quản lý đánh giá".
+ *
+ * @param {number|string} versionId  tb_monhoc_version.id
+ * @returns {Promise<Array<{ mssv, sao, binhLuan, thoiGian, tenBaiGiang }>>}
+ */
+async function danhSachBinhLuanTheoPhienBan(versionId) {
+  // versionId -> các đăng ký -> các chương -> các bài giảng
+  const dangKy = await DangKyBaiGiang.findAll({
+    attributes: ['Id'],
+    where: { MonHocVersionId: versionId },
+    raw: true,
+  });
+  if (!dangKy.length) return [];
+
+  const chiTiet = await ChiTietDangKyBaiGiang.findAll({
+    attributes: ['Id'],
+    where: { DangKyBaiGiangId: { [Op.in]: dangKy.map((d) => d.Id) } },
+    raw: true,
+  });
+  if (!chiTiet.length) return [];
+
+  const baiGiang = await BaiGiang.findAll({
+    attributes: ['Id', 'TenBaiGiang'],
+    where: { ChiTietDangKyBaiGiangId: { [Op.in]: chiTiet.map((c) => c.Id) } },
+    raw: true,
+  });
+  if (!baiGiang.length) return [];
+
+  const tenTheoBaiGiang = new Map(baiGiang.map((b) => [String(b.Id), b.TenBaiGiang]));
+
+  const rows = await DanhGiaBaiGiang.findAll({
+    attributes: ['BaiGiangId', 'MSSV', 'SoSao', 'BinhLuan', 'NgayDanhGia'],
+    where: { BaiGiangId: { [Op.in]: baiGiang.map((b) => b.Id) } },
+    order: [['NgayDanhGia', 'DESC']],
+    raw: true,
+  });
+
+  return rows.map((r) => ({
+    mssv: r.MSSV,
+    sao: r.SoSao,
+    binhLuan: r.BinhLuan,
+    thoiGian: r.NgayDanhGia,
+    tenBaiGiang: tenTheoBaiGiang.get(String(r.BaiGiangId)) ?? null,
+  }));
+}
+
 module.exports = {
   kiemTraQuyenDanhGia,
+  danhSachBinhLuanTheoPhienBan,
   getDanhGiaCuaSinhVien,
   getDanhSachDanhGiaCuaSinhVien,
   taoDanhGia,
   suaDanhGia,
   getThongKeDanhGia,
+  thongKeTheoPhienBan,
 };

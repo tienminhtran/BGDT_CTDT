@@ -36,3 +36,15 @@ export const importRows = async (rows) => {
   const { data } = await http.post(ENDPOINTS.courseSubjects.import, { rows })
   return data
 }
+
+// Ánh xạ đã import: [{ id, maHocPhan, maMon, tenMon }]
+export const list = async () => {
+  const { data } = await http.get(ENDPOINTS.courseSubjects.list)
+  return data.items || []
+}
+
+// Xóa 1 dòng ánh xạ.
+export const remove = async (id) => {
+  const { data } = await http.delete(ENDPOINTS.courseSubjects.remove(id))
+  return data
+}

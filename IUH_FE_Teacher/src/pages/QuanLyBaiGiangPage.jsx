@@ -13,7 +13,7 @@ import {
   X,
 } from 'lucide-react'
 import HlsPlayer from '../components/HlsPlayer'
-import { PageHeading } from '../components/QuanLyLayout'
+import PageHeading from '../components/PageHeading'
 import { monHocService, baiGiangService } from '../services'
 import { buildCoursePlayerPath, buildVideoTheoIdPath } from '../constants'
 
@@ -441,7 +441,7 @@ function ChuongItem({ row, onUploaded }) {
         </div>
 
         {/* Upload */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <input
             type="file"
             accept="video/*"

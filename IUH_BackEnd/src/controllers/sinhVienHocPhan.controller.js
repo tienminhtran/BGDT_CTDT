@@ -1,6 +1,37 @@
 const moodle = require('../services/moodle.service');
 const svhp = require('../services/sinhVienHocPhan.service');
+const loginGuard = require('../services/loginGuard.service');
 const { decodeCourse } = require('../utils/courseToken');
+
+// GET /api/student-courses -> danh sách SV kèm trạng thái khóa đăng nhập
+exports.listSinhVien = async (req, res, next) => {
+  try {
+    res.json({ items: await svhp.danhSachSinhVien() });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// DELETE /api/student-courses/:studentId -> xóa SV khỏi bảng học phần
+exports.xoaSinhVien = async (req, res, next) => {
+  try {
+    const daXoa = await svhp.xoaSinhVien(req.params.studentId);
+    if (!daXoa) return res.status(404).json({ message: 'Không tìm thấy sinh viên' });
+    res.json({ message: `Đã xóa sinh viên ${req.params.studentId}`, daXoa });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /api/student-courses/:studentId/unlock -> mở khóa đăng nhập cho SV
+exports.moKhoaSinhVien = async (req, res, next) => {
+  try {
+    await loginGuard.moKhoaTaiKhoan(req.params.studentId);
+    res.json({ message: `Đã mở khóa ${req.params.studentId}` });
+  } catch (err) {
+    next(err);
+  }
+};
 
 // GET /api/student-courses/:studentId -> danh sách học phần (idnumber) của SV
 exports.listByMssv = async (req, res, next) => {
