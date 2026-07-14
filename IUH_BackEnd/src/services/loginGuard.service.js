@@ -1,5 +1,5 @@
-const { QueryTypes } = require('sequelize');
-const { sequelize } = require('../config/sequelize');
+const { Op } = require('sequelize');
+const { LoginAttempt } = require('../models/orm');
 
 /**
  * Chống dò mật khẩu (brute-force) cho POST /api/auth/login.
@@ -12,7 +12,8 @@ const { sequelize } = require('../config/sequelize');
  *   - 'captcha'  : jti của captcha ĐÃ dùng -> chặn dùng lại 1 mã cho nhiều lần thử
  *
  * Mỗi bộ đếm có cửa sổ thời gian riêng (ExpiresAt). Hết cửa sổ, lần sai kế tiếp
- * sẽ đếm lại từ 1 (xử lý ngay trong câu MERGE, không cần job dọn).
+ * sẽ đếm lại từ 1. Mốc thời gian lấy từ đồng hồ Node (gửi xuống DB theo UTC),
+ * nên máy chạy app và SQL Server cần đồng bộ giờ (NTP).
  */
 
 const NGUONG_CAPTCHA = parseInt(process.env.LOGIN_CAPTCHA_THRESHOLD, 10) || 4;
@@ -36,44 +37,49 @@ function chuanHoaUsername(username) {
   return String(username || '').trim().toLowerCase();
 }
 
+function hetHanSau(giay, moc = new Date()) {
+  return new Date(moc.getTime() + giay * 1000);
+}
+
 /**
- * Tăng 1 bộ đếm và trả về giá trị sau khi tăng. Atomic trong 1 câu lệnh:
- *   - chưa có dòng            -> INSERT FailCount = 1, mở cửa sổ mới
+ * Tăng 1 bộ đếm và trả về giá trị sau khi tăng:
+ *   - chưa có dòng             -> tạo mới, mở cửa sổ mới
  *   - có dòng, còn trong cửa sổ -> FailCount + 1
- *   - có dòng, cửa sổ đã hết  -> đếm lại từ 1, mở cửa sổ mới
+ *   - có dòng, cửa sổ đã hết   -> đếm lại từ 1, mở cửa sổ mới
  */
 async function tangBoDem(scope, key, ttlGiay) {
-  const rows = await sequelize.query(
-    `MERGE tb_LoginAttempt WITH (HOLDLOCK) AS t
-     USING (SELECT :scope AS Scope, :key AS ScopeKey) AS s
-       ON t.Scope = s.Scope AND t.ScopeKey = s.ScopeKey
-     WHEN MATCHED THEN
-       -- SQL Server chỉ cho 1 nhánh WHEN MATCHED ... UPDATE -> tách 2 trường hợp bằng CASE:
-       --   còn trong cửa sổ  -> +1, giữ nguyên hạn
-       --   cửa sổ đã hết hạn -> đếm lại từ 1, mở cửa sổ mới
-       UPDATE SET
-         FailCount = CASE WHEN t.ExpiresAt > SYSUTCDATETIME() THEN t.FailCount + 1 ELSE 1 END,
-         ExpiresAt = CASE WHEN t.ExpiresAt > SYSUTCDATETIME()
-                          THEN t.ExpiresAt
-                          ELSE DATEADD(second, :ttl, SYSUTCDATETIME()) END,
-         UpdatedAt = SYSUTCDATETIME()
-     WHEN NOT MATCHED THEN
-       INSERT (Scope, ScopeKey, FailCount, ExpiresAt, UpdatedAt)
-       VALUES (s.Scope, s.ScopeKey, 1, DATEADD(second, :ttl, SYSUTCDATETIME()), SYSUTCDATETIME())
-     OUTPUT inserted.FailCount AS failCount;`,
-    { replacements: { scope, key, ttl: ttlGiay }, type: QueryTypes.SELECT }
+  const bayGio = new Date();
+  const hanMoi = hetHanSau(ttlGiay, bayGio);
+
+  // 1) Cửa sổ đã hết hạn -> đưa bộ đếm về 0 và mở cửa sổ mới.
+  //    UPDATE có điều kiện ExpiresAt <= now nên dòng còn hạn không bị đụng tới.
+  await LoginAttempt.update(
+    { FailCount: 0, ExpiresAt: hanMoi, UpdatedAt: bayGio },
+    { where: { Scope: scope, ScopeKey: key, ExpiresAt: { [Op.lte]: bayGio } } }
   );
-  return rows[0]?.failCount ?? 0;
+
+  // 2) Chưa có dòng -> tạo. Unique index (Scope, ScopeKey) chặn race:
+  //    2 request cùng lúc thì 1 cái dính lỗi trùng khóa và findOrCreate tự SELECT lại.
+  const [dong] = await LoginAttempt.findOrCreate({
+    where: { Scope: scope, ScopeKey: key },
+    defaults: { FailCount: 0, ExpiresAt: hanMoi, UpdatedAt: bayGio },
+  });
+
+  // 3) +1. increment sinh "SET FailCount = FailCount + 1" nên nhiều request song song
+  //    không ghi đè lẫn nhau (không đọc-rồi-ghi -> không mất lượt đếm).
+  await dong.increment('FailCount', { by: 1 });
+  await dong.reload();
+
+  return dong.FailCount;
 }
 
 // Đọc bộ đếm hiện tại (0 nếu chưa có hoặc cửa sổ đã hết hạn).
 async function docBoDem(scope, key) {
-  const rows = await sequelize.query(
-    `SELECT FailCount AS failCount FROM tb_LoginAttempt
-      WHERE Scope = :scope AND ScopeKey = :key AND ExpiresAt > SYSUTCDATETIME();`,
-    { replacements: { scope, key }, type: QueryTypes.SELECT }
-  );
-  return rows[0]?.failCount ?? 0;
+  const dong = await LoginAttempt.findOne({
+    attributes: ['FailCount'],
+    where: { Scope: scope, ScopeKey: key, ExpiresAt: { [Op.gt]: new Date() } },
+  });
+  return dong?.FailCount ?? 0;
 }
 
 /**
@@ -81,29 +87,32 @@ async function docBoDem(scope, key) {
  * @returns {Promise<number>} số giây còn lại (0 = không bị khóa)
  */
 async function thoiGianKhoaConLai(username) {
-  const rows = await sequelize.query(
-    `SELECT DATEDIFF(second, SYSUTCDATETIME(), ExpiresAt) AS conLai
-       FROM tb_LoginAttempt
-      WHERE Scope = 'lock' AND ScopeKey = :key AND ExpiresAt > SYSUTCDATETIME();`,
-    { replacements: { key: chuanHoaUsername(username) }, type: QueryTypes.SELECT }
-  );
-  const conLai = rows[0]?.conLai ?? 0;
+  const bayGio = new Date();
+  const dong = await LoginAttempt.findOne({
+    attributes: ['ExpiresAt'],
+    where: {
+      Scope: 'lock',
+      ScopeKey: chuanHoaUsername(username),
+      ExpiresAt: { [Op.gt]: bayGio },
+    },
+  });
+  if (!dong) return 0;
+
+  const conLai = Math.ceil((dong.ExpiresAt.getTime() - bayGio.getTime()) / 1000);
   return conLai > 0 ? conLai : 0;
 }
 
 // Đặt/gia hạn khóa tài khoản.
 async function khoaTaiKhoan(username, giay) {
-  await sequelize.query(
-    `MERGE tb_LoginAttempt WITH (HOLDLOCK) AS t
-     USING (SELECT 'lock' AS Scope, :key AS ScopeKey) AS s
-       ON t.Scope = s.Scope AND t.ScopeKey = s.ScopeKey
-     WHEN MATCHED THEN
-       UPDATE SET ExpiresAt = DATEADD(second, :giay, SYSUTCDATETIME()), UpdatedAt = SYSUTCDATETIME()
-     WHEN NOT MATCHED THEN
-       INSERT (Scope, ScopeKey, FailCount, ExpiresAt, UpdatedAt)
-       VALUES ('lock', s.ScopeKey, 0, DATEADD(second, :giay, SYSUTCDATETIME()), SYSUTCDATETIME());`,
-    { replacements: { key: chuanHoaUsername(username), giay } }
-  );
+  const bayGio = new Date();
+  const hanMoi = hetHanSau(giay, bayGio);
+  const key = chuanHoaUsername(username);
+
+  const [dong, moiTao] = await LoginAttempt.findOrCreate({
+    where: { Scope: 'lock', ScopeKey: key },
+    defaults: { FailCount: 0, ExpiresAt: hanMoi, UpdatedAt: bayGio },
+  });
+  if (!moiTao) await dong.update({ ExpiresAt: hanMoi, UpdatedAt: bayGio });
 }
 
 /**
@@ -133,10 +142,7 @@ async function ghiNhanDangNhapSai(username, ip) {
     khoaTrongGiay = THOI_GIAN_KHOA;
     // Đặt lại bộ đếm username: nếu không, ngay sau khi hết khóa chỉ cần sai 1 lần
     // là bị khóa lại tức thì (vì FailCount vẫn >= ngưỡng).
-    await sequelize.query(
-      `DELETE FROM tb_LoginAttempt WHERE Scope = 'user' AND ScopeKey = :key;`,
-      { replacements: { key: u } }
-    );
+    await LoginAttempt.destroy({ where: { Scope: 'user', ScopeKey: u } });
   }
 
   return { canCaptcha: soLanUserIp >= NGUONG_CAPTCHA, khoaTrongGiay };
@@ -145,41 +151,44 @@ async function ghiNhanDangNhapSai(username, ip) {
 // Đăng nhập ĐÚNG -> xóa sạch bộ đếm của user này (theo username, ip và cặp username+ip).
 async function xoaBoDem(username, ip) {
   const u = chuanHoaUsername(username);
-  await sequelize.query(
-    `DELETE FROM tb_LoginAttempt
-      WHERE (Scope = 'user_ip' AND ScopeKey = :userIp)
-         OR (Scope = 'user'    AND ScopeKey = :user)
-         OR (Scope = 'ip'      AND ScopeKey = :ip)
-         OR (Scope = 'lock'    AND ScopeKey = :user);`,
-    { replacements: { userIp: `${u}|${ip}`, user: u, ip } }
-  );
+  await LoginAttempt.destroy({
+    where: {
+      [Op.or]: [
+        { Scope: 'user_ip', ScopeKey: `${u}|${ip}` },
+        { Scope: 'user', ScopeKey: u },
+        { Scope: 'ip', ScopeKey: ip },
+        { Scope: 'lock', ScopeKey: u },
+      ],
+    },
+  });
 }
 
 /**
  * Đánh dấu 1 captcha (theo jti) là ĐÃ dùng. Dựa vào unique index (Scope, ScopeKey):
- * lần thứ hai insert cùng jti sẽ lỗi -> trả false (captcha bị dùng lại).
+ * lần thứ hai insert cùng jti sẽ lỗi trùng khóa -> trả false (captcha bị dùng lại).
  * @param {string} jti
  * @param {number} exp  thời điểm hết hạn của captcha token (epoch giây)
  * @returns {Promise<boolean>} true nếu đây là lần dùng đầu tiên
  */
 async function danhDauCaptchaDaDung(jti, exp) {
   try {
-    await sequelize.query(
-      `INSERT INTO tb_LoginAttempt (Scope, ScopeKey, FailCount, ExpiresAt, UpdatedAt)
-       VALUES ('captcha', :jti, 0, :exp, SYSUTCDATETIME());`,
-      { replacements: { jti, exp: new Date(exp * 1000) } }
-    );
+    await LoginAttempt.create({
+      Scope: 'captcha',
+      ScopeKey: jti,
+      FailCount: 0,
+      ExpiresAt: new Date(exp * 1000),
+      UpdatedAt: new Date(),
+    });
     return true;
-  } catch (_) {
-    return false; // trùng khóa -> captcha này đã được dùng rồi
+  } catch (err) {
+    if (err?.name === 'SequelizeUniqueConstraintError') return false; // jti này đã dùng rồi
+    throw err; // lỗi khác (mất kết nối DB...) -> để tầng trên xử lý, không im lặng cho qua
   }
 }
 
 // Dọn các dòng đã hết hạn (bộ đếm, khóa, captcha đã dùng). Gọi định kỳ từ server.js.
 async function donRacHetHan() {
-  await sequelize.query(
-    `DELETE FROM tb_LoginAttempt WHERE ExpiresAt < SYSUTCDATETIME();`
-  );
+  await LoginAttempt.destroy({ where: { ExpiresAt: { [Op.lt]: new Date() } } });
 }
 
 module.exports = {

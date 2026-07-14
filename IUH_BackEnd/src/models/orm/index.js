@@ -96,6 +96,21 @@ const HocPhanMonHoc = sequelize.define(
   { tableName: 'tb_HocPhanMonHoc' }
 );
 
+// Bộ đếm chống dò mật khẩu (xem sql/03_login_guard.sql).
+// Unique index (Scope, ScopeKey) là ràng buộc mà findOrCreate/upsert dựa vào.
+const LoginAttempt = sequelize.define(
+  'LoginAttempt',
+  {
+    Id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+    Scope: { type: DataTypes.STRING(16), allowNull: false, unique: 'UX_Scope_Key' },
+    ScopeKey: { type: DataTypes.STRING(200), allowNull: false, unique: 'UX_Scope_Key' },
+    FailCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+    ExpiresAt: { type: DataTypes.DATE, allowNull: false },
+    UpdatedAt: { type: DataTypes.DATE, allowNull: false },
+  },
+  { tableName: 'tb_LoginAttempt' }
+);
+
 // Quan hệ:
 //   BaiGiang -> ChiTietDangKyBaiGiang -> DangKyBaiGiang -> MonhocVersion -> Monhoc
 BaiGiang.belongsTo(ChiTietDangKyBaiGiang, {
@@ -154,4 +169,5 @@ module.exports = {
   DanhGiaBaiGiang,
   SinhVienHocPhan,
   HocPhanMonHoc,
+  LoginAttempt,
 };
