@@ -52,10 +52,10 @@ export default function ThuMucVideoPage() {
     }
   }, [lanTai])
 
-  // Tổng dung lượng phải quét toàn bộ bucket -> gọi riêng, không chặn cây hiển thị.
+  // Tổng dung lượng phải quét toàn bộ bucket (~15k object) -> gọi riêng, chạy chậm hơn
+  // và không chặn việc hiển thị cây.
   useEffect(() => {
     let alive = true
-    setTong(null)
     luuTruService
       .tongKet('')
       .then((t) => alive && setTong(t))
@@ -231,13 +231,12 @@ function NutThuMuc({ nut, cap }) {
 
 // 1 file: icon theo đuôi, kèm dung lượng và thời điểm sửa đổi.
 function NutFile({ nut, cap }) {
-  const Icon = iconTheoDuoi(nut.ten)
   return (
     <li
       style={{ paddingLeft: 12 + cap * 20 + 20 }} // +20: thẳng hàng với tên thư mục (bù chỗ mũi tên)
       className="flex items-center gap-2 py-1.5 pr-3 text-sm hover:bg-slate-50"
     >
-      <Icon size={15} className="shrink-0 text-slate-400" />
+      <IconFile ten={nut.ten} />
       <span className="truncate text-slate-600">{nut.ten}</span>
       <span className="ml-auto flex shrink-0 items-center gap-3 text-xs text-slate-400">
         {nut.capNhat && <span className="hidden sm:block">{dinhDangNgay(nut.capNhat)}</span>}
@@ -247,11 +246,16 @@ function NutFile({ nut, cap }) {
   )
 }
 
-function iconTheoDuoi(ten) {
+// Icon theo đuôi file: video (.mp4/.ts), playlist HLS (.m3u8), còn lại là file thường.
+function IconFile({ ten }) {
   const t = ten.toLowerCase()
-  if (t.endsWith('.mp4') || t.endsWith('.ts')) return FileVideo
-  if (t.endsWith('.m3u8')) return FileText
-  return FileIcon
+  const chung = 'shrink-0'
+
+  if (t.endsWith('.mp4') || t.endsWith('.ts'))
+    return <FileVideo size={15} className={`${chung} text-[#115EA8]`} />
+  if (t.endsWith('.m3u8'))
+    return <FileText size={15} className={`${chung} text-emerald-600`} />
+  return <FileIcon size={15} className={`${chung} text-slate-400`} />
 }
 
 // 31120001613 -> "28.98 GB"

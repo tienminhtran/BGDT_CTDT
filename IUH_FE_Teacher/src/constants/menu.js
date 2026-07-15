@@ -1,4 +1,4 @@
-import { BookOpen, FileSpreadsheet, Folder, Star, Users } from 'lucide-react'
+import { BookOpen, FileSpreadsheet, Folder, FolderSearch, Star, Users, VideotapeIcon } from 'lucide-react'
 import { ROUTES } from './routes'
 
 /**
@@ -15,7 +15,7 @@ export const NHOM_MENU = [
         to: ROUTES.home,
         end: true,
         fixed: true,
-        label: 'Quản lý bài giảng',
+        label: 'Test chức năng bài giảng',
         icon: BookOpen,
       },
       {
@@ -47,6 +47,16 @@ export const NHOM_MENU = [
         to: ROUTES.thumucvideobg,
         label: 'Thư mục video bài giảng',
         icon: Folder,
+      },
+      {
+        to: ROUTES.thumucfilebg,
+        label: 'Quản lý bài giảng',
+        icon: VideotapeIcon,
+      },
+      {
+        to: ROUTES.lichSuThayDoi,
+        label: 'Lịch sử thay đổi',
+        icon: FolderSearch,
       }
     ],
   }

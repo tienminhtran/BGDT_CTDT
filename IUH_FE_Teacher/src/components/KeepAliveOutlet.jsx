@@ -8,6 +8,8 @@ import {
   DanhGiaPage,
   ThongTinSinhVienPage,
   ThuMucVideoPage,
+  QuanLyBaiGiangDSPage,
+  LichSuThayDoiPage,
 } from '../pages'
 
 // Trang tương ứng mỗi tab. Router chỉ còn lo việc khớp URL, việc render trang do đây quyết định.
@@ -17,6 +19,8 @@ const TRANG_THEO_PATH = {
   [ROUTES.importHocPhan]: ImportPage,
   [ROUTES.thongTinSinhVien]: ThongTinSinhVienPage,
   [ROUTES.thumucvideobg]: ThuMucVideoPage,
+  [ROUTES.thumucfilebg]: QuanLyBaiGiangDSPage,
+  [ROUTES.lichSuThayDoi]: LichSuThayDoiPage,
 }
 
 /**

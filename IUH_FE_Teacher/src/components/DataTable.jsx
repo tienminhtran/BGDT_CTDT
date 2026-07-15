@@ -6,8 +6,10 @@ import {
   ChevronsLeft,
   ChevronsRight,
   ChevronDown,
+  Printer,
 } from 'lucide-react'
 import ActionMenu from './ActionMenu'
+import { inBang } from '../utils/inBang'
 
 const CO_TRANG = [10, 20, 50, 100]
 
@@ -19,8 +21,9 @@ const CO_TRANG = [10, 20, 50, 100]
  * Component KHÔNG biết gì về dữ liệu cụ thể — trang gọi nó chỉ khai báo cột,
  * dòng và thao tác.
  *
- * @param {Array<{key, label, render?, align?, width?}>} columns
+ * @param {Array<{key, label, render?, printValue?, align?, width?}>} columns
  *        render(row) -> nội dung ô; không có thì lấy row[key]
+ *        printValue(row) -> text thuần khi in PDF (vì render trả JSX); mặc định row[key]
  * @param {Array<object>} rows
  * @param {(row) => string|number} rowKey        khóa duy nhất của dòng
  * @param {(row) => Array} actions               thao tác của dòng (menu ở cột trái)
@@ -29,6 +32,9 @@ const CO_TRANG = [10, 20, 50, 100]
  * @param {(row) => React.ReactNode} renderExpanded
  *        có hàm này -> thêm cột mũi tên bên trái; bấm mũi tên thì bung 1 dòng chi
  *        tiết nằm ngay dưới, trải hết chiều ngang bảng
+ * @param {string} printTitle   có -> hiện nút In PDF (in dòng đang chọn, không chọn thì in hết)
+ * @param {(row) => Promise<{tieuDe?, cot, dong}|null>} printDetail
+ *        có -> khi in kèm luôn bảng chi tiết của mỗi dòng (vd danh sách chương)
  * @param {boolean} loading
  * @param {string} empty
  */
@@ -40,6 +46,8 @@ export default function DataTable({
   selectable = false,
   onSelectionChange,
   renderExpanded,
+  printTitle,
+  printDetail,
   loading = false,
   empty = 'Không có dữ liệu',
 }) {
@@ -47,6 +55,7 @@ export default function DataTable({
   const [coTrang, setCoTrang] = useState(10)
   const [chon, setChon] = useState(() => new Set())
   const [mo, setMo] = useState(() => new Set()) // các dòng đang bung chi tiết
+  const [dangIn, setDangIn] = useState(false) // đang nạp chi tiết để in
 
   const soTrang = Math.max(1, Math.ceil(rows.length / coTrang))
   // Dữ liệu co lại (lọc/xóa) làm mất trang cuối -> kẹp trang hiện tại lại.
@@ -112,8 +121,58 @@ export default function DataTable({
     (selectable ? 1 : 0) +
     (actions ? 1 : 0)
 
+  // In PDF: có dòng đang tick thì in các dòng đó, không tick thì in hết.
+  // Có printDetail -> nạp chi tiết từng dòng (async) rồi in kèm bảng con.
+  const inPdf = async () => {
+    if (dangIn) return
+    const dsIn = chon.size ? rows.filter((r) => chon.has(rowKey(r))) : rows
+
+    setDangIn(true)
+    try {
+      const dong = []
+      for (const row of dsIn) {
+        const o = columns.map((c) => (c.printValue ? c.printValue(row) : row[c.key]))
+        const chiTiet = printDetail ? await printDetail(row) : null
+        dong.push({ o, chiTiet })
+      }
+      inBang({
+        tieuDe: printTitle,
+        cot: columns.map((c) => ({ label: c.label, align: c.align })),
+        dong,
+        ghiChu: chon.size ? `${dsIn.length} dòng đang chọn` : `tất cả ${dsIn.length} dòng`,
+      })
+    } finally {
+      setDangIn(false)
+    }
+  }
+
   return (
     <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      {printTitle && (
+        <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2">
+          <span className="text-xs text-slate-500">
+            {chon.size ? `Đang chọn ${chon.size} dòng` : `${rows.length} dòng`}
+          </span>
+          <button
+            type="button"
+            onClick={inPdf}
+            disabled={!rows.length || dangIn}
+            title={chon.size ? 'In các dòng đang chọn' : 'In tất cả các dòng'}
+            className="ml-auto flex items-center gap-1.5 rounded-lg bg-[#115EA8] px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-[#0d4a82] disabled:opacity-50"
+          >
+            {dangIn ? (
+              <>
+                <Loader2 size={15} className="animate-spin" /> Đang chuẩn bị…
+              </>
+            ) : (
+              <>
+                <Printer size={15} /> In PDF{chon.size ? ` (${chon.size})` : ''}
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
       {/* Màn hẹp: cuộn ngang trong khung bảng, không đẩy vỡ cả trang */}
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-left text-sm">
