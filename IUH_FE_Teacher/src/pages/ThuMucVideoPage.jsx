@@ -22,7 +22,7 @@ import { luuTruService } from '../services'
  * cây một lần — mở thư mục nào mới gọi API nạp đúng cấp đó, rồi nhớ lại (cache)
  * để lần mở sau không gọi lại.
  *
- * Cấu trúc thật: [mã môn]/[phiên bản]/[id chương]/stream|chunk/...
+ * Cấu trúc thật: stream|chunk/[mã môn]/[phiên bản]/[id chương]/...
  */
 export default function ThuMucVideoPage() {
   const [goc, setGoc] = useState({ loading: true, thuMuc: [], file: [], error: '' })
@@ -70,13 +70,13 @@ export default function ThuMucVideoPage() {
       <PageHeading
         icon={Folder}
         title="Thư mục video bài giảng"
-        desc="Cấu trúc lưu trữ trên MinIO: [mã môn] / [phiên bản] / [id chương] / stream · chunk"
+        desc="Cấu trúc lưu trữ trên MinIO: stream · chunk / [mã môn] / [phiên bản] / [id chương]"
       />
 
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <TheSoLieu
           icon={Folder}
-          nhan="Môn học (thư mục gốc)"
+          nhan="Thư mục gốc (stream · chunk)"
           so={goc.thuMuc.length}
           mau="bg-[#115EA8]"
         />

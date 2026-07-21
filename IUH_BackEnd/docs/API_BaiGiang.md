@@ -5,9 +5,9 @@ Tài liệu các API liên quan tới **môn học, đăng ký bài giảng, upl
 - Base URL (dev): `http://localhost:3000/api` (FE gọi qua proxy Vite `/api`)
 - Xác thực: gửi **wstoken LMS** ở header `Authorization: Bearer <token>` (FE tự gắn từ `localStorage.moodle_token`).
 - Lưu trữ video: MinIO, **bucket private**. Video chỉ phát qua proxy backend có token, không lộ URL MinIO.
-- Cấu trúc thư mục trên MinIO: `[ma_tuquan]/[version]/[idChiTiet]/{stream,chunk}/`
-  - `stream/video.<ext>` — video gốc
-  - `chunk/index.m3u8` + `seg_*.ts` — bản HLS để phát
+- Cấu trúc thư mục trên MinIO: `{stream,chunk}/[ma_tuquan]/[version]/[idChiTiet]/`
+  - `stream/[ma_tuquan]/[version]/[idChiTiet]/video.<ext>` — video gốc
+  - `chunk/[ma_tuquan]/[version]/[idChiTiet]/index.m3u8` + `seg_*.ts` — bản HLS để phát
 
 > **Đặt tên endpoint dùng tiếng Anh.** Bảng đối chiếu với tên cũ:
 >
@@ -171,8 +171,8 @@ x-api-key: <UPLOAD_API_KEY>
 ### Backend xử lý
 
 1. Nhận file vào thư mục tạm.
-2. Upload video gốc → `[ma_tuquan]/[version]/[idChiTiet]/stream/video.<ext>`.
-3. Transcode HLS bằng ffmpeg → `chunk/index.m3u8` + `seg_*.ts` (đoạn dài `HLS_SEGMENT_TIME` giây).
+2. Upload video gốc → `stream/[ma_tuquan]/[version]/[idChiTiet]/video.<ext>`.
+3. Transcode HLS bằng ffmpeg → `chunk/[ma_tuquan]/[version]/[idChiTiet]/index.m3u8` + `seg_*.ts` (đoạn dài `HLS_SEGMENT_TIME` giây).
 4. Lưu object key vào DB, xoá file tạm, trả kết quả.
 
 ### Response 200
@@ -191,7 +191,7 @@ x-api-key: <UPLOAD_API_KEY>
 | Trường | Kiểu | Ý nghĩa |
 |--------|------|---------|
 | `idBaiGiang` | number | `baiGiangId` vừa cập nhật |
-| `prefix` | string | Tiền tố thư mục trên MinIO: `[ma_tuquan]/[version]/[idChiTiet]` |
+| `prefix` | string | Phần chung của đường dẫn MinIO: `[ma_tuquan]/[version]/[idChiTiet]` (key thật = `stream/<prefix>/...` và `chunk/<prefix>/...`) |
 | `coVideo` | boolean | Đã lưu video gốc thành công |
 | `coHls` | boolean | Đã tạo được bản HLS để phát |
 | `hlsSkipped` | boolean | `true` khi bỏ qua transcode HLS (máy không có ffmpeg) |

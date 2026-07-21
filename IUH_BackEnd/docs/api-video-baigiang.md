@@ -22,8 +22,9 @@ Tài liệu 3 API thao tác video theo **id bài giảng** (`tb_BaiGiang.Id`):
 
 ## 1. Upload video
 
-Upload 1 file video cho bài giảng. File gốc được lưu vào `stream/` trên MinIO, đồng thời
-transcode sang HLS (`chunk/index.m3u8` + các `.ts`) nếu server có `ffmpeg`.
+Upload 1 file video cho bài giảng. File gốc được lưu vào
+`stream/[ma_tuquan]/[version]/[idChiTiet]/video.<ext>` trên MinIO, đồng thời transcode sang
+HLS (`chunk/[ma_tuquan]/[version]/[idChiTiet]/index.m3u8` + các `.ts`) nếu server có `ffmpeg`.
 
 ```
 POST /api/lectures/:id/video
@@ -68,7 +69,7 @@ Nếu đang xử lý hoặc đã có video → `409`. (Có thể kiểm tra trư
 | Trường       | Kiểu    | Mô tả                                                       |
 | ------------ | ------- | ---------------------------------------------------------- |
 | `idBaiGiang` | int     | Id bài giảng đã upload                                      |
-| `prefix`     | string  | Đường dẫn thư mục lưu trên MinIO `[ma_tuquan]/[version]/[idChiTiet]` |
+| `prefix`     | string  | Phần chung của đường dẫn MinIO `[ma_tuquan]/[version]/[idChiTiet]`; key thật là `stream/<prefix>/...` và `chunk/<prefix>/...` |
 | `coVideo`    | boolean | Đã lưu video gốc (`stream/`) hay chưa                       |
 | `coHls`      | boolean | Đã tạo HLS chunk hay chưa                                   |
 | `hlsSkipped` | boolean | `true` nếu bỏ qua tạo HLS vì server không có `ffmpeg`       |

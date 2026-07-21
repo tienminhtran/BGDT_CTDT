@@ -33,6 +33,29 @@ function sanitizeSegment(value) {
     .replace(/^_+|_+$/g, '') || 'unknown';
 }
 
+// Cấu trúc thư mục trên MinIO: [loại]/[ma_tuquan]/[version]/[idChiTiet]/<file>
+//   stream/2101420/1/2/video.mp4      -> LinkBaiGiang
+//   chunk/2101420/1/2/index.m3u8      -> LinkChunkBaiGiang (+ seg_*.ts cùng thư mục)
+// Gom theo loại ở cấp gốc để tách hẳn video gốc (nặng, ít đọc) và bản HLS (nhiều object, đọc liên tục).
+const THU_MUC_STREAM = 'stream';
+const THU_MUC_CHUNK = 'chunk';
+
+/**
+ * Dựng các đường dẫn MinIO của 1 bài giảng từ vị trí lưu trữ (xem getViTriBaiGiang).
+ * @returns {{ duoi:string, stream:string, chunk:string }}
+ *   duoi   : phần chung "[ma_tuquan]/[version]/[idChiTiet]"
+ *   stream : thư mục chứa video gốc
+ *   chunk  : thư mục chứa HLS
+ */
+function duongDanBaiGiang(viTri) {
+  const duoi = `${sanitizeSegment(viTri.maTuQuan)}/${sanitizeSegment(viTri.version)}/${viTri.chiTietId}`;
+  return {
+    duoi,
+    stream: `${THU_MUC_STREAM}/${duoi}`,
+    chunk: `${THU_MUC_CHUNK}/${duoi}`,
+  };
+}
+
 const CONTENT_TYPES = {
   '.m3u8': 'application/vnd.apple.mpegurl',
   '.ts': 'video/mp2t',
@@ -143,19 +166,19 @@ async function listObjectNames(prefix) {
 }
 
 /**
- * Xác định trạng thái lưu trữ của 1 bài giảng theo prefix [ma_tuquan]/[version]/[idChiTiet].
- * Dựa trên nội dung 2 thư mục con stream/ và chunk/:
+ * Xác định trạng thái lưu trữ của 1 bài giảng dựa trên 2 thư mục stream/ và chunk/:
  *   - 'completed'  : stream có video + chunk có index.m3u8 và >=1 segment .ts
  *                    -> đã upload & xử lý xong, KHÔNG cho upload nữa.
  *   - 'processing' : stream đã có video nhưng chunk chưa tạo xong (thiếu m3u8 hoặc .ts)
  *                    -> video đang xử lý, KHÔNG cho upload.
  *   - 'empty'      : chưa có stream lẫn chunk -> CHO PHÉP upload.
+ * @param {{ stream:string, chunk:string }} duongDan kết quả của duongDanBaiGiang()
  * @returns {Promise<{ canUpload:boolean, status:string, message:string, coStream:boolean, coChunk:boolean }>}
  */
-async function trangThaiUploadTheoPrefix(prefix) {
+async function trangThaiUploadTheoDuongDan(duongDan) {
   const [streamFiles, chunkFiles] = await Promise.all([
-    listObjectNames(`${prefix}/stream`),
-    listObjectNames(`${prefix}/chunk`),
+    listObjectNames(duongDan.stream),
+    listObjectNames(duongDan.chunk),
   ]);
 
   const coStream = streamFiles.length > 0;
@@ -199,14 +222,19 @@ async function trangThaiUploadTheoPrefix(prefix) {
  * Kiểm tra trạng thái thư mục lưu trữ của 1 bài giảng trước khi upload video.
  * Dùng cho client check trước (GET) và cho chính uploadVideoBaiGiang chặn upload.
  * @param {number} idBaiGiang
- * @returns {Promise<{ canUpload, status, message, prefix, coStream, coChunk }>}
+ * @returns {Promise<{ canUpload, status, message, prefix, prefixStream, prefixChunk, coStream, coChunk }>}
  */
 async function kiemTraTrangThaiUpload(idBaiGiang) {
   await ensureBucket();
   const viTri = await getViTriBaiGiang(idBaiGiang);
-  const prefix = `${sanitizeSegment(viTri.maTuQuan)}/${sanitizeSegment(viTri.version)}/${viTri.chiTietId}`;
-  const trangThai = await trangThaiUploadTheoPrefix(prefix);
-  return { ...trangThai, prefix };
+  const duongDan = duongDanBaiGiang(viTri);
+  const trangThai = await trangThaiUploadTheoDuongDan(duongDan);
+  return {
+    ...trangThai,
+    prefix: duongDan.duoi, // phần chung [ma_tuquan]/[version]/[idChiTiet]
+    prefixStream: duongDan.stream,
+    prefixChunk: duongDan.chunk,
+  };
 }
 
 // Upload 1 file lên MinIO, trả về object key (đường dẫn tương đối) đã lưu.
@@ -227,15 +255,15 @@ async function capNhatLink(idBaiGiang, keyBaiGiang, keyChunk) {
 
 /**
  * Upload 1 video bài giảng lên MinIO.
- * Cấu trúc thư mục: [ma_tuquan]/[version]/[idChiTiet]/
- *   - stream/<file gốc>       -> LinkBaiGiang (video phát trực tiếp)
- *   - chunk/index.m3u8 + *.ts  -> LinkChunkBaiGiang (HLS, nếu có ffmpeg)
+ * Cấu trúc thư mục (đuôi chung = [ma_tuquan]/[version]/[idChiTiet]):
+ *   - stream/<đuôi>/video.<ext>          -> LinkBaiGiang (video gốc)
+ *   - chunk/<đuôi>/index.m3u8 + *.ts     -> LinkChunkBaiGiang (HLS, nếu có ffmpeg)
  *
  * DB chỉ lưu object key (đường dẫn tương đối), endpoint MinIO lấy từ .env.
  *
  * @param {number} idBaiGiang
  * @param {{ path:string, originalname:string }} file  file tạm do multer lưu
- * @returns {Promise<{ prefix, linkBaiGiang, linkChunkBaiGiang, hlsSkipped, message }>}
+ * @returns {Promise<{ prefix, coVideo, coHls, hlsSkipped, message }>}
  */
 async function uploadVideoBaiGiang(idBaiGiang, file) {
   if (!file || !file.path) {
@@ -247,11 +275,11 @@ async function uploadVideoBaiGiang(idBaiGiang, file) {
   await ensureBucket();
   const viTri = await getViTriBaiGiang(idBaiGiang);
 
-  // Thư mục cấp 3 = id chi tiết đăng ký bài giảng (idChiTiet)
-  const prefix = `${sanitizeSegment(viTri.maTuQuan)}/${sanitizeSegment(viTri.version)}/${viTri.chiTietId}`;
+  // Thư mục cấp cuối = id chi tiết đăng ký bài giảng (idChiTiet)
+  const duongDan = duongDanBaiGiang(viTri);
 
   // 0) Kiểm tra trạng thái thư mục: đã có video / đang xử lý -> chặn upload.
-  const trangThai = await trangThaiUploadTheoPrefix(prefix);
+  const trangThai = await trangThaiUploadTheoDuongDan(duongDan);
   if (!trangThai.canUpload) {
     const err = new Error(trangThai.message);
     err.status = 409; // Conflict: bài giảng đã có video hoặc đang xử lý
@@ -259,11 +287,11 @@ async function uploadVideoBaiGiang(idBaiGiang, file) {
     throw err;
   }
 
-  // 1) Upload video gốc vào stream/ -> lưu object key
+  // 1) Upload video gốc vào stream/... -> lưu object key
   const ext = path.extname(file.originalname || '') || '.mp4';
-  const keyBaiGiang = await uploadFile(`${prefix}/stream/video${ext.toLowerCase()}`, file.path);
+  const keyBaiGiang = await uploadFile(`${duongDan.stream}/video${ext.toLowerCase()}`, file.path);
 
-  // 2) Tạo HLS chunk vào chunk/ (nếu có ffmpeg)
+  // 2) Tạo HLS chunk vào chunk/... (nếu có ffmpeg)
   let keyChunk = null;
   let hlsSkipped = false;
   let message = 'Upload thành công';
@@ -274,9 +302,9 @@ async function uploadVideoBaiGiang(idBaiGiang, file) {
 
     const files = fs.readdirSync(hlsDir);
     for (const name of files) {
-      await uploadFile(`${prefix}/chunk/${name}`, path.join(hlsDir, name));
+      await uploadFile(`${duongDan.chunk}/${name}`, path.join(hlsDir, name));
     }
-    keyChunk = `${prefix}/chunk/index.m3u8`;
+    keyChunk = `${duongDan.chunk}/index.m3u8`;
   } catch (e) {
     if (e.code === 'FFMPEG_UNAVAILABLE') {
       hlsSkipped = true;
@@ -292,7 +320,7 @@ async function uploadVideoBaiGiang(idBaiGiang, file) {
 
   // Không trả URL MinIO; chỉ báo trạng thái. Phát video qua proxy có token.
   return {
-    prefix,
+    prefix: duongDan.duoi,
     coVideo: !!keyBaiGiang,
     coHls: !!keyChunk,
     hlsSkipped,
@@ -604,11 +632,11 @@ async function deleteVideo(idBaiGiang, teacherKey) {
 
   await ensureBucket();
   const viTri = await getViTriBaiGiang(idBaiGiang);
-  const prefix = `${sanitizeSegment(viTri.maTuQuan)}/${sanitizeSegment(viTri.version)}/${viTri.chiTietId}`;
+  const duongDan = duongDanBaiGiang(viTri);
 
   // CHỈ cho xóa khi video đã hoàn chỉnh: có đủ stream (video.*) + chunk (index.m3u8 + >=1 .ts).
   // Tránh xóa nhầm khi đang upload dang dở/đang xử lý hoặc khi chưa có video.
-  const trangThai = await trangThaiUploadTheoPrefix(prefix);
+  const trangThai = await trangThaiUploadTheoDuongDan(duongDan);
   if (trangThai.status !== 'completed') {
     const err = new Error(
       trangThai.status === 'processing'
@@ -619,8 +647,13 @@ async function deleteVideo(idBaiGiang, teacherKey) {
     throw err;
   }
 
-  // Xóa TOÀN BỘ thư mục lưu trữ của bài giảng trên MinIO (cả stream/ lẫn chunk/).
-  const objectKeysToDelete = await listObjectNames(prefix);
+  // Xóa TOÀN BỘ object của bài giảng trên MinIO. stream/ và chunk/ nằm ở 2 nhánh
+  // gốc khác nhau nên phải liệt kê & xóa từng nhánh, không gộp 1 prefix được.
+  const [streamKeys, chunkKeys] = await Promise.all([
+    listObjectNames(duongDan.stream),
+    listObjectNames(duongDan.chunk),
+  ]);
+  const objectKeysToDelete = [...streamKeys, ...chunkKeys];
 
   if (objectKeysToDelete.length > 0) {
     await minioClient.removeObjects(BUCKET, objectKeysToDelete);

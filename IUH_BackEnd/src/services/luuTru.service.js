@@ -4,9 +4,10 @@ const { minioClient, BUCKET, ensureBucket } = require('../config/minio');
  * Duyệt thư mục video bài giảng trên MinIO (chỉ đọc).
  *
  * MinIO không có thư mục thật — chỉ có object key dạng
- *   [ma_tuquan]/[version]/[idChiTiet]/stream/video.mp4
- *   [ma_tuquan]/[version]/[idChiTiet]/chunk/index.m3u8
+ *   stream/[ma_tuquan]/[version]/[idChiTiet]/video.mp4
+ *   chunk/[ma_tuquan]/[version]/[idChiTiet]/index.m3u8
  * "Thư mục" là phần key trước dấu '/'. SDK gọi các nhánh này là *common prefix*.
+ * Bucket vì vậy chỉ có 2 nhánh gốc: stream/ (video gốc) và chunk/ (bản HLS).
  *
  * Bucket đang có ~15k object (mỗi segment .ts là 1 object) nên KHÔNG dựng cả cây
  * một lần — liệt kê theo từng cấp, FE mở thư mục nào thì gọi tiếp thư mục đó.

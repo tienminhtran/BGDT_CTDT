@@ -1,6 +1,6 @@
 const luuTru = require('../services/luuTru.service');
 
-// GET /api/storage?prefix=2101420/1  (x-teacher-key) -> nội dung 1 cấp thư mục
+// GET /api/storage?prefix=stream/2101420/1  (x-teacher-key) -> nội dung 1 cấp thư mục
 exports.lietKe = async (req, res, next) => {
   try {
     res.json(await luuTru.lietKe(req.query.prefix));
