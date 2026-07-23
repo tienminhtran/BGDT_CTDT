@@ -102,7 +102,9 @@ export default function HomePage() {
 
   const heroBg = {
     backgroundImage: `url(${bgImage})`,
-    backgroundColor: '#1e3a8a',
+    // Màu nền dự phòng lúc bg.jpg chưa tải xong (khi reload). Dùng tông sáng gần với
+    // ảnh để không bị "nháy" xanh đậm; trước đây là #1e3a8a nên reload thấy nền xanh.
+    backgroundColor: '#eef2f9',
     backgroundSize: 'cover',
     backgroundPosition: 'center',
   }
