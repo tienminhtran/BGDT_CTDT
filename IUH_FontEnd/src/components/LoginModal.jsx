@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import BookLoader from './Bookloader';
 
 export default function LoginModal({ onLogin, onClose }) {
   const [username, setUsername] = useState('');
@@ -81,9 +82,15 @@ export default function LoginModal({ onLogin, onClose }) {
           <button
             type="submit"
             disabled={loading || !username || !password}
-            className="mt-1 bg-blue-900 py-2.5 text-base text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300"
+            className="mt-1 flex min-h-[46px] items-center justify-center bg-blue-900 py-1.5 text-base text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300"
           >
-            {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+            {loading ? (
+              <span className="flex items-center justify-center [&_.book]:!m-0">
+                <BookLoader />
+              </span>
+            ) : (
+              'Đăng nhập'
+            )}
           </button>
         </form>
       </div>

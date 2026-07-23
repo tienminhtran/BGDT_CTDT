@@ -56,13 +56,14 @@ export default function ManualPage() {
       {/* ===== Thanh điều hướng ===== */}
       <header className="sticky top-0 z-30 border-b border-white/10 bg-blue-800/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
-          <img src={logoWhite} alt="IUH" className="h-9 object-contain" />
+          {/* nhấn logo quay về login */}
+          <img src={logoWhite} alt="IUH" className="h-9 object-contain"/>
           <Link
             to={ROUTES.home}
-            className="inline-flex items-center gap-2 rounded-sm bg-white/15 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/25"
+            className="inline-flex items-center gap-1 bg-blue-700 px-2 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-blue-800"
           >
-            <ArrowLeft size={16} />
-            Về trang đăng nhập
+            <LogIn size={20} />
+            Đăng nhập
           </Link>
         </div>
       </header>
@@ -267,7 +268,7 @@ export default function ManualPage() {
               </p>
               <a
                 href="mailto:phongdaotao@iuh.edu.vn"
-                className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800"
+                className="mt-4 inline-flex items-center gap-2 bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800"
               >
                 <Mail size={16} />
                 phongdaotao@iuh.edu.vn

@@ -14,14 +14,19 @@ export const login = async (username, password, captcha) => {
 }
 
 // Lấy 1 mã captcha mới: image là data URI base64 -> gán thẳng vào <img src>.
+// silent: request nền, không bật loading toàn cục.
 export const getCaptcha = async () => {
-  const { data } = await http.get(ENDPOINTS.auth.captcha)
+  const { data } = await http.get(ENDPOINTS.auth.captcha, { silent: true })
   return data // { captchaToken, image, expiresIn }
 }
 
 // Hỏi trước khi bấm đăng nhập: tài khoản này có đang bị khóa / có phải nhập captcha không.
+// silent: chạy khi rời ô MSSV, không nên bật loading toàn cục cho người dùng thấy.
 export const getLoginStatus = async (username) => {
-  const { data } = await http.get(ENDPOINTS.auth.loginStatus, { params: { username } })
+  const { data } = await http.get(ENDPOINTS.auth.loginStatus, {
+    params: { username },
+    silent: true,
+  })
   return data // { locked, retryAfter, captchaRequired }
 }
 

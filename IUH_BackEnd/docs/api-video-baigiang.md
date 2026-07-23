@@ -1,26 +1,130 @@
 # API Video Bài giảng
 
-Tài liệu 3 API thao tác video theo **id bài giảng** (`tb_BaiGiang.Id`):
+Tài liệu 4 API phục vụ luồng quản lý video bài giảng:
 
-1. [Upload video](#1-upload-video)
-2. [Xem 1 video theo id bài giảng](#2-xem-1-video-theo-id-bài-giảng)
-3. [Xóa video](#3-xóa-video)
+1. [Danh sách môn học + phiên bản](#1-danh-sách-môn-học--phiên-bản)
+2. [Upload video](#2-upload-video)
+3. [Xem 1 video theo id bài giảng](#3-xem-1-video-theo-id-bài-giảng)
+4. [Xóa video](#4-xóa-video)
 
-**Base URL:** `/api/lectures`
+**Base URL:** `/api` — mục 1 dùng `/api/subjects`, mục 2–4 dùng `/api/lectures`.
+Server dev mặc định chạy ở `http://localhost:3000` (biến `PORT`).
 
 ## Xác thực (Headers)
 
-| Header          | Giá trị                | Dùng cho                        |
-| --------------- | ---------------------- | ------------------------------- |
-| `x-api-key`     | `UPLOAD_API_KEY`       | Upload, Xóa (bảo vệ endpoint)   |
-| `x-teacher-key` | `KEY_LOGIN_TEACHER`    | Xem (giảng viên), Xóa           |
+| Header          | Giá trị             | Dùng cho                      |
+| --------------- | ------------------- | ----------------------------- |
+| _(không cần)_   | —                   | Danh sách môn học (mục 1)     |
+| `x-api-key`     | `UPLOAD_API_KEY`    | Upload, Xóa (bảo vệ endpoint) |
+| `x-teacher-key` | `KEY_LOGIN_TEACHER` | Xem (giảng viên), Xóa         |
 
 > Cả hai key được cấu hình bằng biến môi trường trên server. Thiếu/sai key → `401`
 > (riêng thiếu cấu hình `UPLOAD_API_KEY` trên server → `500`).
 
 ---
 
-## 1. Upload video
+## 1. Danh sách môn học + phiên bản
+
+Lấy danh sách môn học kèm các phiên bản (version) của môn — dùng để đổ dropdown
+"Môn học → Phiên bản" trước khi chọn chương và upload video.
+
+Có **2 biến thể**:
+
+| Endpoint                     | Trả về                                                        | Dùng khi                                                       |
+| ---------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------- |
+| `GET /api/subjects`          | **Tất cả** môn học + mọi phiên bản (kể cả môn chưa có phiên bản) | Chọn môn/phiên bản để tạo & upload bài giảng                   |
+| `GET /api/subjects/with-hashcode` | Chỉ các cặp môn + phiên bản **đã có bài giảng**, kèm `hashcode` | Cần link trang xem bài giảng (`/bai-giang-dien-tu/<hashcode>`) |
+
+### 1.1 `GET /api/subjects`
+
+Không cần header xác thực.
+
+**Response `200`**
+
+```json
+{
+  "monHoc": [
+    {
+      "id": 5,
+      "maTuQuan": "2101420",
+      "tenMon": "Lập trình Web",
+      "versions": [
+        { "id": 11, "version": "1" },
+        { "id": 12, "version": "2" }
+      ]
+    },
+    {
+      "id": 7,
+      "maTuQuan": "2101431",
+      "tenMon": "Cơ sở dữ liệu",
+      "versions": []
+    }
+  ]
+}
+```
+
+| Trường               | Kiểu   | Mô tả                                                      |
+| -------------------- | ------ | ---------------------------------------------------------- |
+| `monHoc`             | array  | Danh sách môn học, sắp xếp theo `tenMon` tăng dần          |
+| `monHoc[].id`        | int    | Id môn học (`tb_monhoc.id`)                                |
+| `monHoc[].maTuQuan`  | string | Mã môn (`ma_tuquan`) — dùng làm thư mục gốc trên MinIO     |
+| `monHoc[].tenMon`    | string | Tên môn học                                                |
+| `monHoc[].versions`  | array  | Các phiên bản của môn, sắp xếp theo `version` tăng dần; **mảng rỗng nếu môn chưa có phiên bản** |
+| `versions[].id`      | int    | Id phiên bản (`tb_monhoc_version.id`) — chính là `subjectVersionId` truyền cho `GET /api/lectures/chapters` |
+| `versions[].version` | string | Tên phiên bản                                              |
+
+**Ví dụ cURL**
+
+```bash
+curl "http://localhost:3000/api/subjects"
+```
+
+### 1.2 `GET /api/subjects/with-hashcode`
+
+Chỉ liệt kê các cặp **môn + phiên bản đã có bài giảng** (đi từ `tb_BaiGiang` lên), đã
+lọc trùng. Mỗi dòng kèm `hashcode` — token mờ AES‑256‑GCM của `{maMon, version}`,
+dùng làm đường dẫn trang xem bài giảng để **không lộ mã môn** ra client.
+
+**Response `200`**
+
+```json
+{
+  "monHoc": [
+    {
+      "maMon": "2101420",
+      "tenMon": "Lập trình Web",
+      "version": "1",
+      "hashcode": "T2xkZXJ...Q0dR"
+    }
+  ]
+}
+```
+
+| Trường     | Kiểu   | Mô tả                                                             |
+| ---------- | ------ | ----------------------------------------------------------------- |
+| `maMon`    | string | Mã môn (`ma_tuquan`)                                              |
+| `tenMon`   | string | Tên môn học                                                       |
+| `version`  | string | Phiên bản môn học                                                 |
+| `hashcode` | string | Token khóa học (URL-safe). Dùng cho `/bai-giang-dien-tu/<hashcode>` và `GET /api/lectures?course=<hashcode>` |
+
+> `hashcode` được sinh lại mỗi lần gọi (IV ngẫu nhiên) nên **giá trị khác nhau giữa các
+> lần gọi vẫn hợp lệ** — không dùng nó làm khóa so sánh/cache.
+
+**Lỗi (cả 2 endpoint)**
+
+| Mã    | Trường hợp        |
+| ----- | ----------------- |
+| `500` | Lỗi truy vấn DB   |
+
+**Ví dụ cURL**
+
+```bash
+curl "http://localhost:3000/api/subjects/with-hashcode"
+```
+
+---
+
+## 2. Upload video
 
 Upload 1 file video cho bài giảng. File gốc được lưu vào
 `stream/[ma_tuquan]/[version]/[idChiTiet]/video.<ext>` trên MinIO, đồng thời transcode sang
@@ -87,14 +191,14 @@ Nếu đang xử lý hoặc đã có video → `409`. (Có thể kiểm tra trư
 **Ví dụ cURL**
 
 ```bash
-curl -X POST "http://localhost:5999/api/lectures/12/video" \
+curl -X POST "http://localhost:3000/api/lectures/12/video" \
   -H "x-api-key: <UPLOAD_API_KEY>" \
   -F "video=@baigiang01.mp4"
 ```
 
 ---
 
-## 2. Xem 1 video theo id bài giảng
+## 3. Xem 1 video theo id bài giảng
 
 Giảng viên xem 1 video riêng lẻ **chỉ bằng id** (không cần token khóa học). Trả metadata
 bài giảng + URL phát HLS trong 1 lần gọi.
@@ -162,13 +266,13 @@ GET /api/lectures/:id/teacher
 **Ví dụ cURL**
 
 ```bash
-curl "http://localhost:5999/api/lectures/12/teacher" \
+curl "http://localhost:3000/api/lectures/12/teacher" \
   -H "x-teacher-key: <KEY_LOGIN_TEACHER>"
 ```
 
 ---
 
-## 3. Xóa video
+## 4. Xóa video
 
 Xóa video của bài giảng: dọn **toàn bộ** `stream/` + `chunk/` trên MinIO và đặt lại
 `LinkBaiGiang`, `LinkChunkBaiGiang` về `null` trong DB.
@@ -216,7 +320,7 @@ có đủ `stream/` + `chunk/index.m3u8` + ≥1 `.ts`). Đang xử lý hoặc ch
 **Ví dụ cURL**
 
 ```bash
-curl -X DELETE "http://localhost:5999/api/lectures/12/video" \
+curl -X DELETE "http://localhost:3000/api/lectures/12/video" \
   -H "x-api-key: <UPLOAD_API_KEY>" \
   -H "x-teacher-key: <KEY_LOGIN_TEACHER>"
 ```

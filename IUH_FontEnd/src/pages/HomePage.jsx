@@ -167,7 +167,7 @@ export default function HomePage() {
 
             <Link
               to={ROUTES.huongDan}
-              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-950"
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:bg-blue-300"
             >
               <BookOpen size={16} />
               Xem hướng dẫn sử dụng chi tiết
@@ -374,9 +374,7 @@ function LoginForm({ login }) {
           >
             {khoaConLai > 0
               ? `Tạm khóa - thử lại sau ${khoaConLai}s`
-              : loading
-                ? 'Đang đăng nhập...'
-                : 'Đăng nhập'}
+              : 'Đăng nhập'}
           </button>
         </form>
 
