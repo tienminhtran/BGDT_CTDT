@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   LogIn,
@@ -12,6 +13,7 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import { ROUTES } from '../constants'
+import LogoIllustration from '../components/Logoillustration'
 import logoWhite from '../assets/logo-white.svg'
 import buoc1 from '../assets/Buoc_1.png'
 import buoc2 from '../assets/Buoc_2.png'
@@ -51,6 +53,25 @@ const STEPS = [
 ]
 
 export default function ManualPage() {
+  // Trang này tĩnh (không gọi API) nên loading ở đây là GIẢ LẬP: hiện màn chờ
+  // LogoIllustration một nhịp cho hiệu ứng reveal chạy xong rồi mới lộ nội dung.
+  const [dangTai, setDangTai] = useState(true)
+
+  useEffect(() => {
+    const t = setTimeout(() => setDangTai(false), 2200)
+    return () => clearTimeout(t)
+  }, [])
+
+  if (dangTai) {
+    return (
+      <div className="grid min-h-screen w-full place-items-center bg-slate-50 p-6">
+        <div className="w-full max-w-[500px]">
+          <LogoIllustration />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen w-full bg-slate-50 text-slate-800">
       {/* ===== Thanh điều hướng ===== */}
