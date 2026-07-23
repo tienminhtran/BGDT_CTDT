@@ -78,7 +78,9 @@ export default function ManualPage() {
       <header className="sticky top-0 z-30 border-b border-white/10 bg-blue-800/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           {/* nhấn logo quay về login */}
-          <img src={logoWhite} alt="IUH" className="h-9 object-contain"/>
+          <Link to={ROUTES.home} aria-label="Về trang chủ">
+            <img src={logoWhite} alt="IUH" className="h-9 cursor-pointer object-contain" />
+          </Link>
           <Link
             to={ROUTES.home}
             className="inline-flex items-center gap-1 bg-blue-700 px-2 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-blue-800"
