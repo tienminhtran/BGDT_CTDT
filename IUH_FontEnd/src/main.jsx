@@ -4,8 +4,6 @@ import './index.css'
 import App from './App.jsx'
 import GlobalLoader from './components/GlobalLoader'
 import { AuthProvider } from './contexts/AuthContext'
-import { registerSW } from 'virtual:pwa-register'
-registerSW({ onOfflineReady() { console.log('Offline ready') } })
 
 // Không dùng StrictMode để tránh effect chạy 2 lần ở dev (gây gọi API lặp như /me, /courses,
 // /access, /lectures...). Đây là hành vi dev-only; bỏ đi để Network tab phản ánh đúng số lần gọi.
