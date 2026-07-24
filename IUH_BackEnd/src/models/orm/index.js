@@ -58,6 +58,8 @@ const BaiGiang = sequelize.define(
     LinkBaiGiang: { type: DataTypes.STRING(500) },
     LinkChunkBaiGiang: { type: DataTypes.TEXT },
     LuotXem: { type: DataTypes.INTEGER },
+    // BIT NULL DEFAULT 0 -> null nghĩa là chưa khóa. Bài giảng đã khóa thì cấm xóa video.
+    DaKhoa: { type: DataTypes.BOOLEAN },
   },
   { tableName: 'tb_BaiGiang' }
 );

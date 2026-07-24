@@ -146,9 +146,19 @@ export default function HomePage() {
               <li className="flex gap-2">
                 <span className="font-semibold">2.</span>
                 <span>
-                  Nếu quên mật khẩu hoặc không đăng nhập được, vui lòng liên hệ
-                  Trung tâm Quản trị Hệ thống E.2 để được hỗ trợ về vấn đề tài
-                  khoản LMS.
+                  Nếu quên mật khẩu hoặc không đăng nhập được, vui lòng liên hệ{' '}
+                  <span className="group relative inline-block cursor-help font-medium text-blue-900 underline decoration-dotted underline-offset-2" tabIndex={0}>
+                    Trung tâm Quản trị Hệ thống E.2
+                    <span
+                      role="tooltip"
+                      className="pointer-events-none absolute left-0 top-full z-50 mt-1.5 w-[min(17rem,80vw)] rounded-md bg-gray-900 px-3 py-2 text-[13px] font-normal leading-relaxed text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100"
+                    >
+                      <span className="block">Điện thoại: 0283.8940 390 — máy lẻ 838</span>
+                      <span className="block">Email: csm@iuh.edu.vn</span>
+                      <span className="absolute -top-1 left-4 h-2 w-2 rotate-45 bg-gray-900" />
+                    </span>
+                  </span>{' '}
+                  để được hỗ trợ về vấn đề tài khoản LMS.
                 </span>
               </li>
               <li className="flex gap-2">
@@ -162,7 +172,21 @@ export default function HomePage() {
                 <span className="font-semibold">4.</span>
                 <span>
                   Nếu gặp lỗi kỹ thuật trong quá trình sử dụng (không tải được
-                  video, lỗi trang...), vui lòng liên hệ Phòng Đào tạo để được hỗ trợ.
+                  video, lỗi trang...), vui lòng liên hệ{' '}
+                  {/* Rê chuột / chạm vào cụm này -> hiện số điện thoại & email hỗ trợ */}
+                  <span className="group relative inline-block cursor-help font-medium text-blue-900 underline decoration-dotted underline-offset-2" tabIndex={0}>
+                    Phòng Đào tạo
+                    <span
+                      role="tooltip"
+                      className="pointer-events-none absolute left-0 top-full z-50 mt-1.5 w-[min(17rem,80vw)] rounded-md bg-gray-900 px-3 py-2 text-[13px] font-normal leading-relaxed text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100"
+                    >
+                      <span className="block">ĐT: 0283.8940390 — 525</span>
+                      <span className="block">Email: phongdaotao@iuh.edu.vn</span>
+                      {/* Mũi tên nhỏ chỉ lên hộp thoại */}
+                      <span className="absolute -top-1 left-4 h-2 w-2 rotate-45 bg-gray-900" />
+                    </span>
+                  </span>{' '}
+                  để được hỗ trợ.
                 </span>
               </li>
             </ol>

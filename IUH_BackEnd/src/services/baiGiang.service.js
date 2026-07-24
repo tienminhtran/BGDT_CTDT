@@ -328,6 +328,9 @@ async function uploadVideoBaiGiang(idBaiGiang, file) {
   };
 }
 
+
+
+
 /**
  * Danh sách chi tiết đăng ký bài giảng (các chương) theo phiên bản môn học,
  * kèm thông tin bài giảng (video) đã upload nếu có.
@@ -369,6 +372,10 @@ async function listChiTietByVersion(monHocVersionId) {
     coHls: !!ct.BaiGiang?.LinkChunkBaiGiang,
   }));
 }
+
+
+
+
 
 /**
  * Danh sách video bài giảng (đã upload) theo mã môn (ma_tuquan) + phiên bản.
@@ -460,6 +467,10 @@ async function listVideos(maMon, version) {
   const subjectName = selected[0]?.ChiTiet?.DangKy?.MonHocVersion?.Monhoc?.tenmon ?? null;
   return { subjectName, videos };
 }
+
+
+
+
 
 /**
  * Lấy thông tin 1 bài giảng theo Id (tb_BaiGiang) để xem riêng lẻ.
@@ -622,11 +633,22 @@ async function deleteVideo(idBaiGiang, teacherKey) {
   }
   
   const bg = await BaiGiang.findByPk(idBaiGiang, {
-    attributes: ['Id', 'LinkBaiGiang', 'LinkChunkBaiGiang'],
+    attributes: ['Id', 'LinkBaiGiang', 'LinkChunkBaiGiang', 'DaKhoa'],
   });
   if (!bg) {
     const err = new Error('Không tìm thấy bài giảng');
     err.status = 404;
+    throw err;
+  }
+
+  // Bài giảng đã khóa -> cấm xóa. Cột là BIT NULL nên null/0 đều coi như chưa khóa.
+  // Chặn ở đây (dữ liệu đã có sẵn trong RAM) trước khi đụng tới MinIO cho rẻ.
+  // message được controller trả thẳng cho client: res.status(403).json({ message }).
+  if (bg.DaKhoa) {
+    const err = new Error('Không thể xóa bài giảng đã khóa');
+    err.status = 403;
+    // thông báo mess, thay vì 403
+    err.message = 'Không thể xóa bài giảng đã khóa';
     throw err;
   }
 
