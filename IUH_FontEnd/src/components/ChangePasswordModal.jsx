@@ -33,7 +33,7 @@ function OMatKhau({ label, value, onChange, placeholder, autoFocus }) {
       </div>
     </label>
   )
-}
+} 
 
 /**
  * Đổi mật khẩu LMS.
