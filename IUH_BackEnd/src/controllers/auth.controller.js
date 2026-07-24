@@ -1,7 +1,8 @@
 const moodle = require('../services/moodle.service');
 const guard = require('../services/loginGuard.service');
 const captcha = require('../services/captcha.service');
-const { setSid, clearSid } = require('../utils/sessionCookie');
+const phienWeb = require('../services/moodleSession.service');
+const { setSid, clearSid, readSid } = require('../utils/sessionCookie');
 
 function mapUser(info) {
   return {
@@ -113,6 +114,15 @@ exports.login = async (req, res, next) => {
     const info = await moodle.getSiteInfo(wstoken);
     await guard.xoaBoDem(username, ip); // đăng nhập đúng -> xóa sạch bộ đếm
 
+    // Tạo thêm phiên web LMS (MoodleSession + sesskey) cho các API chỉ có ở lớp web
+    // (xem lms.controller). Đây là lúc DUY NHẤT server còn giữ mật khẩu trong tay.
+    // Chạy nền + nuốt lỗi: LMS đổi form đăng nhập hay chặn bot thì login vẫn phải thành công.
+    moodle
+      .webLogin(username, password)
+      // userid parse từ HTML có thể thiếu tùy bản Moodle -> lấy từ wstoken làm chuẩn.
+      .then((p) => phienWeb.luu(info.username, { ...p, userid: p.userid || info.userid }))
+      .catch((e) => console.error('Không tạo được phiên web LMS:', e.message));
+
     // Ghi danh tính hiện tại vào cookie phiên -> đăng nhập tài khoản mới sẽ ghi đè
     // danh tính cũ, khiến vé phát (hls_*) của tài khoản trước không còn dùng được.
     setSid(res, info.username, req);
@@ -145,6 +155,10 @@ exports.me = async (req, res, next) => {
 
 // POST /api/auth/logout  -> xóa cookie phiên (vé phát hls_* sẽ tự hết hạn theo TTL).
 exports.logout = (req, res) => {
+  // Bỏ luôn phiên web LMS đang giữ hộ, không để nó sống tới hết TTL sau khi SV thoát.
+  const username = readSid(req);
+  if (username) phienWeb.xoa(username);
+
   clearSid(res);
   res.json({ message: 'Đã đăng xuất' });
 };

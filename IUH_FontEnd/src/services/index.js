@@ -5,4 +5,5 @@ export * as monHocService from './monHocService'
 export * as baiGiangService from './baiGiangService'
 export * as sinhVienHocPhanService from './sinhVienHocPhanService'
 export * as danhGiaService from './danhGiaService'
+export * as lmsService from './lmsService'
 

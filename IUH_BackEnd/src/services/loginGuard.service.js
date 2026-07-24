@@ -163,6 +163,33 @@ async function xoaBoDem(username, ip) {
   });
 }
 
+/* --- Bộ đếm riêng cho ĐỔI MẬT KHẨU (scope 'chpwd') ---------------------------
+ * Dùng bảng cũ nhưng scope riêng, KHÔNG dùng chung bộ đếm đăng nhập: sai mật khẩu
+ * cũ vài lần trong form đổi mật khẩu mà làm khóa luôn tài khoản LMS thì quá nặng.
+ * Ở đây chỉ leo thang tới mức bắt nhập captcha, không khóa tài khoản.
+ */
+const NGUONG_CAPTCHA_DOI_MK = parseInt(process.env.CHANGE_PWD_CAPTCHA_THRESHOLD, 10) || 2;
+const TTL_DOI_MK = parseInt(process.env.CHANGE_PWD_WINDOW, 10) || 900; // 15 phút
+
+// Đã sai đủ số lần để bắt buộc nhập captcha chưa?
+async function canCaptchaDoiMatKhau(username) {
+  const soLan = await docBoDem('chpwd', chuanHoaUsername(username));
+  return soLan >= NGUONG_CAPTCHA_DOI_MK;
+}
+
+// Ghi nhận 1 lần đổi mật khẩu SAI. @returns {Promise<boolean>} lần sau có phải nhập captcha không
+async function ghiNhanDoiMatKhauSai(username) {
+  const soLan = await tangBoDem('chpwd', chuanHoaUsername(username), TTL_DOI_MK);
+  return soLan >= NGUONG_CAPTCHA_DOI_MK;
+}
+
+// Đổi mật khẩu thành công -> xóa bộ đếm.
+async function xoaBoDemDoiMatKhau(username) {
+  await LoginAttempt.destroy({
+    where: { Scope: 'chpwd', ScopeKey: chuanHoaUsername(username) },
+  });
+}
+
 /**
  * Đánh dấu 1 captcha (theo jti) là ĐÃ dùng. Dựa vào unique index (Scope, ScopeKey):
  * lần thứ hai insert cùng jti sẽ lỗi trùng khóa -> trả false (captcha bị dùng lại).
@@ -218,7 +245,11 @@ module.exports = {
   moKhoaTaiKhoan,
   danhDauCaptchaDaDung,
   donRacHetHan,
+  canCaptchaDoiMatKhau,
+  ghiNhanDoiMatKhauSai,
+  xoaBoDemDoiMatKhau,
   NGUONG_CAPTCHA,
   NGUONG_KHOA,
   THOI_GIAN_KHOA,
+  NGUONG_CAPTCHA_DOI_MK,
 };

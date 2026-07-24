@@ -10,6 +10,10 @@ router.use('/auth', authRoutes);
 const courseRoutes = require('./course.routes');
 router.use('/courses', courseRoutes);
 
+// Cầu nối tới API giao diện web của Moodle (sesskey + /lib/ajax/service.php)
+const lmsRoutes = require('./lms.routes');
+router.use('/lms', lmsRoutes);
+
 
 // Sinh viên - Học phần (lưu/lấy idnumber theo MSSV)
 const svhpRoutes = require('./sinhVienHocPhan.routes');

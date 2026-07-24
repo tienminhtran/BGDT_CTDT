@@ -8,6 +8,14 @@ export const ENDPOINTS = {
     captcha: '/auth/captcha', // -> { captchaToken, image (base64), expiresIn }
     loginStatus: '/auth/login-status', // ?username=... -> { locked, retryAfter, captchaRequired }
   },
+  // Cầu nối tới lớp giao diện web của LMS (cần cookie MoodleSession + sesskey,
+  // trình duyệt không tự gọi được vì CORS -> backend gọi hộ).
+  lms: {
+    sesskey: '/lms/sesskey', // -> { sesskey, userid }
+    ajax: '/lms/ajax', // POST { methodname, args }
+    changePassword: '/lms/change-password', // POST { oldPassword, newPassword, captcha? }
+    changePasswordStatus: '/lms/change-password/status', // -> { captchaRequired }
+  },
   courses: '/courses',
   subjects: '/subjects',
   lectures: {
