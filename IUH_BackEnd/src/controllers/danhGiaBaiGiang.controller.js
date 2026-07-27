@@ -24,6 +24,55 @@ function parseLectureId(req) {
   return id;
 }
 
+// Chuẩn hóa các query param lọc cho GET /api/reviews/my. Bỏ qua field trống/không hợp lệ.
+function parseReviewFilters(query = {}) {
+  const filters = {};
+  const trim = (v) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
+  const toStar = (v) => {
+    const n = parseInt(v, 10);
+    return Number.isInteger(n) && n >= 1 && n <= 5 ? n : undefined;
+  };
+
+  const courseName = trim(query.courseName);
+  const courseCode = trim(query.courseCode);
+  const videoTitle = trim(query.videoTitle);
+  if (courseName) filters.courseName = courseName;
+  if (courseCode) filters.courseCode = courseCode;
+  if (videoTitle) filters.videoTitle = videoTitle;
+
+  const stars = toStar(query.stars);
+  const starsFrom = toStar(query.starsFrom);
+  const starsTo = toStar(query.starsTo);
+  if (stars != null) filters.stars = stars;
+  if (starsFrom != null) filters.starsFrom = starsFrom;
+  if (starsTo != null) filters.starsTo = starsTo;
+
+  // dateFrom/dateTo dạng 'YYYY-MM-DD' -> Date bao trọn ngày (giờ địa phương của server).
+  const dateFrom = trim(query.dateFrom);
+  const dateTo = trim(query.dateTo);
+  if (dateFrom) {
+    const d = new Date(`${dateFrom}T00:00:00`);
+    if (!Number.isNaN(d.getTime())) filters.dateFrom = d;
+  }
+  if (dateTo) {
+    const d = new Date(`${dateTo}T23:59:59.999`);
+    if (!Number.isNaN(d.getTime())) filters.dateTo = d;
+  }
+
+  return filters;
+}
+
+// Chuẩn hóa phân trang cho GET /api/reviews/my.
+// pageSize chỉ nhận các mức cho phép (mặc định 15); page >= 1 (mặc định 1).
+const PAGE_SIZES = [15, 50, 100, 200, 300];
+function parsePagination(query = {}) {
+  let pageSize = parseInt(query.pageSize, 10);
+  if (!PAGE_SIZES.includes(pageSize)) pageSize = 15;
+  let page = parseInt(query.page, 10);
+  if (!Number.isInteger(page) || page < 1) page = 1;
+  return { page, pageSize };
+}
+
 // POST /api/reviews/:lectureId  (Bearer wstoken)  body: { stars, comment }
 // SV bình luận + đánh giá sao cho 1 bài giảng (mỗi SV 1 lần/bài giảng).
 exports.tao = async (req, res, next) => {
@@ -74,8 +123,10 @@ exports.danhSach = async (req, res, next) => {
 exports.cuaToiTatCa = async (req, res, next) => {
   try {
     const studentId = await getStudentId(req); // 401 nếu chưa đăng nhập
-    const reviews = await danhGia.getDanhSachDanhGiaCuaSinhVien(studentId);
-    res.json({ reviews });
+    const filters = parseReviewFilters(req.query);
+    const pagination = parsePagination(req.query);
+    const result = await danhGia.getDanhSachDanhGiaCuaSinhVien(studentId, filters, pagination);
+    res.json(result); // { reviews, total, page, pageSize, totalPages }
   } catch (err) {
     if (err.status) return res.status(err.status).json({ message: err.message });
     next(err);

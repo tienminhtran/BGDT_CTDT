@@ -14,11 +14,20 @@ export const getDanhGiaCuaToi = async (lectureId) => {
   return data.review
 }
 
-// Danh sách TẤT CẢ đánh giá của SV đang đăng nhập (kèm tên môn + bài giảng). Cần đăng nhập.
-// Trả mảng đã enrich + sort mới nhất trước từ BE.
-export const getDanhGiaCuaSinhVienList = async () => {
-  const { data } = await http.get(ENDPOINTS.reviews.my())
-  return data.reviews
+// Danh sách đánh giá của SV đang đăng nhập (kèm tên môn + bài giảng), có phân trang. Cần đăng nhập.
+// filters (đều tùy chọn): { courseName, courseCode, videoTitle, stars, starsFrom, starsTo, dateFrom, dateTo }
+// - dateFrom/dateTo dạng 'YYYY-MM-DD'; chỉ gửi field có giá trị.
+// pagination: { page, pageSize } — mặc định BE trả trang 1, 15 dòng.
+// Trả { reviews, total, page, pageSize, totalPages } (reviews đã enrich + sort mới nhất trước từ BE).
+export const getDanhGiaCuaSinhVienList = async (filters = {}, pagination = {}) => {
+  const params = {}
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== null && value !== '') params[key] = value
+  }
+  if (pagination.page) params.page = pagination.page
+  if (pagination.pageSize) params.pageSize = pagination.pageSize
+  const { data } = await http.get(ENDPOINTS.reviews.my(), { params })
+  return data
 }
 
 // Tạo mới đánh giá (sao + bình luận). Cần đăng nhập.

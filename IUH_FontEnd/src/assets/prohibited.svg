@@ -1,0 +1,183 @@
+<svg
+  width="320"
+  height="240"
+  viewBox="0 0 320 240"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <defs>
+    <filter id="soft-shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow
+        dx="0"
+        dy="8"
+        stdDeviation="6"
+        flood-color="#78350F"
+        flood-opacity="0.12"
+      />
+    </filter>
+
+    <!-- Book -->
+    <linearGradient id="book-cover" x1="60" y1="50" x2="260" y2="190">
+      <stop offset="0%" stop-color="#FBBF24"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Shadow -->
+  <ellipse cx="160" cy="218" rx="85" ry="7" fill="#FEF3C7"/>
+
+  <!-- Background -->
+  <circle cx="160" cy="120" r="75" fill="#FFFBEB"/>
+  <circle cx="230" cy="95" r="22" fill="#FEF3C7" opacity=".6"/>
+
+  <!-- BOOK -->
+  <g filter="url(#soft-shadow)">
+
+    <!-- Pages -->
+    <path
+      d="M68 62
+         C110 57 155 64 160 66
+         C165 64 210 57 252 62
+         V172
+         C210 167 165 174 160 176
+         C155 174 110 167 68 172
+         Z"
+      fill="#fff"
+    />
+
+    <path
+      d="M68 62
+         C110 57 155 64 160 66
+         C165 64 210 57 252 62
+         V172
+         C210 167 165 174 160 176
+         C155 174 110 167 68 172
+         Z"
+      stroke="#FDE68A"
+      stroke-width="2"
+    />
+
+    <!-- Cover -->
+    <path
+      d="M60 55
+         C105 50 155 57 160 59
+         C165 57 215 50 260 55
+         V168
+         C215 163 165 170 160 172
+         C155 170 105 163 60 168
+         Z"
+      fill="url(#book-cover)"
+    />
+
+    <!-- Spine -->
+    <line
+      x1="160"
+      y1="59"
+      x2="160"
+      y2="172"
+      stroke="#B45309"
+      stroke-width="3"
+      opacity=".4"
+      stroke-linecap="round"
+    />
+
+    <!-- Text -->
+    <line x1="82" y1="80" x2="132" y2="76"
+      stroke="#FEF3C7" stroke-width="3" stroke-linecap="round"/>
+
+    <line x1="82" y1="96" x2="120" y2="92"
+      stroke="#FEF3C7" stroke-width="3" stroke-linecap="round"/>
+
+    <line x1="188" y1="76" x2="238" y2="80"
+      stroke="#FEF3C7" stroke-width="3" stroke-linecap="round"/>
+
+    <line x1="200" y1="92" x2="238" y2="96"
+      stroke="#FEF3C7" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <!-- WHITE LOCK -->
+  <g filter="url(#soft-shadow)">
+
+    <!-- Shackle -->
+    <path
+      d="M218 70
+         V60
+         C218 52 224 46 232 46
+         C240 46 246 52 246 60
+         V70"
+      stroke="#E5E7EB"
+      stroke-width="5"
+      stroke-linecap="round"
+      fill="none"
+    />
+
+    <!-- Body -->
+    <rect
+      x="212"
+      y="68"
+      width="40"
+      height="32"
+      rx="8"
+      fill="#FFFFFF"
+      stroke="#D1D5DB"
+      stroke-width="2"
+    />
+
+    <!-- Highlight -->
+    <path
+      d="M218 74H246"
+      stroke="#F3F4F6"
+      stroke-width="2"
+      stroke-linecap="round"
+    />
+
+    <!-- Keyhole -->
+    <circle
+      cx="232"
+      cy="82"
+      r="3"
+      fill="#9CA3AF"
+    />
+
+    <path
+      d="M231 84
+         L230 92
+         H234
+         L233 84
+         Z"
+      fill="#9CA3AF"
+    />
+  </g>
+
+  <!-- Decorations -->
+  <g stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round">
+
+    <path d="M45 70V80M40 75H50"/>
+
+    <circle
+      cx="65"
+      cy="45"
+      r="2.5"
+      fill="#D97706"
+      stroke="none"
+    />
+
+    <path d="M270 110V120M265 115H275"/>
+
+    <circle
+      cx="255"
+      cy="90"
+      r="3"
+      fill="#F59E0B"
+      stroke="none"
+    />
+
+    <circle
+      cx="75"
+      cy="180"
+      r="2"
+      fill="#B45309"
+      stroke="none"
+    />
+  </g>
+</svg>

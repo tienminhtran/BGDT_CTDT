@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, PlayCircle, Loader2, Lock, Star, MessageSquare, Send, FileBadge } from 'lucide-react'
+import { ArrowLeft, PlayCircle, Loader2, Star, MessageSquare, Send, FileBadge } from 'lucide-react'
 import Layout from '../components/Layout'
 import HlsPlayer from '../components/HlsPlayer'
 import { useAuth } from '../contexts/AuthContext'
+import prohibitedSvg from '../assets/prohibited.svg'
 import { baiGiangService, sinhVienHocPhanService, danhGiaService } from '../services'
 import { ROUTES, API_BASE_URL } from '../constants'
 
@@ -344,7 +345,11 @@ export default function CoursePlayerPage() {
         <main className="mx-auto w-full max-w-full px-4 py-6">
           {BackButton}
           <div className="mx-auto mt-10 max-w-md rounded-xl border border-amber-200 bg-amber-50 p-6 text-center">
-            <Lock className="mx-auto text-amber-500" size={32} />
+            <img
+              src={prohibitedSvg}
+              alt="Không có quyền truy cập"
+              className="mx-auto h-40 w-auto"
+            />
             <h1 className="mt-3 font-semibold text-amber-800">
               Bạn không có quyền học môn này
             </h1>

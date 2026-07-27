@@ -296,6 +296,19 @@ exports.deleteVideo = async (req, res, next) => {
       return res.status(400).json({ message: 'Id bài giảng không hợp lệ' });
     }
 
+    // path ra lỗi không thể xóa video do đã khóa
+
+    const bg = await baiGiang.getBaiGiangById(id);
+    if (!bg) {
+      return res.status(404).json({ message: 'Không tìm thấy bài giảng' });
+    }
+    if (bg.DaKhoa) {
+      const err = new Error('Không thể xóa bài giảng đã khóa');
+      err.status = 403;
+      throw err;
+    }
+
+
     const teacherKey = req.headers['x-teacher-key'];
     if (!process.env.KEY_LOGIN_TEACHER || teacherKey !== process.env.KEY_LOGIN_TEACHER) {
       return res.status(401).json({ message: 'Key giảng viên không hợp lệ' });

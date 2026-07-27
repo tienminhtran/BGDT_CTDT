@@ -54,12 +54,44 @@ async function getDanhGiaCuaSinhVien(baiGiangId, mssv) {
  * Đường nối enrich: DanhGiaBaiGiang -> BaiGiang -> ChiTiet -> DangKy -> MonHocVersion -> Monhoc.
  * Sắp xếp mới nhất trước. Trả mảng (rỗng nếu SV chưa đánh giá gì).
  *
+ * Hỗ trợ lọc (mọi field đều tùy chọn, cộng dồn AND):
+ *   - stars           : lọc đúng số sao (1..5)
+ *   - starsFrom/starsTo: lọc khoảng số sao (bỏ qua nếu đã có `stars`)
+ *   - dateFrom/dateTo  : lọc khoảng NgayDanhGia (Date đã bao trọn ngày, do controller dựng)
+ *   - courseName       : chứa (không phân biệt hoa/thường) trong tên môn
+ *   - courseCode       : chứa trong mã tự quản của môn
+ *   - videoTitle       : chứa trong tên bài giảng
+ * (stars/date lọc ở tầng DB; 3 field text lọc trong JS sau khi enrich vì nằm ở bảng include lồng sâu.)
+ *
+ * Phân trang (tùy chọn, mặc định trang 1 - 15 dòng): áp dụng SAU khi lọc để `total`
+ * phản ánh đúng số kết quả khớp bộ lọc.
+ *
  * @param {string} mssv
- * @returns {Promise<Array<object>>}
+ * @param {object} [filters]
+ * @param {object} [pagination] { page, pageSize }
+ * @returns {Promise<{ reviews: Array<object>, total: number, page: number, pageSize: number, totalPages: number }>}
  */
-async function getDanhSachDanhGiaCuaSinhVien(mssv) {
+async function getDanhSachDanhGiaCuaSinhVien(mssv, filters = {}, pagination = {}) {
+  const where = { MSSV: mssv };
+
+  // Lọc số sao: ưu tiên giá trị chính xác `stars`, nếu không thì theo khoảng starsFrom..starsTo.
+  if (filters.stars != null) {
+    where.SoSao = filters.stars;
+  } else {
+    const sao = {};
+    if (filters.starsFrom != null) sao[Op.gte] = filters.starsFrom;
+    if (filters.starsTo != null) sao[Op.lte] = filters.starsTo;
+    if (Object.getOwnPropertySymbols(sao).length) where.SoSao = sao;
+  }
+
+  // Lọc khoảng ngày đánh giá.
+  const ngay = {};
+  if (filters.dateFrom instanceof Date) ngay[Op.gte] = filters.dateFrom;
+  if (filters.dateTo instanceof Date) ngay[Op.lte] = filters.dateTo;
+  if (Object.getOwnPropertySymbols(ngay).length) where.NgayDanhGia = ngay;
+
   const rows = await DanhGiaBaiGiang.findAll({
-    where: { MSSV: mssv },
+    where,
     attributes: ['Id', 'BaiGiangId', 'MSSV', 'SoSao', 'BinhLuan', 'NgayDanhGia'],
     order: [['NgayDanhGia', 'DESC']],
     include: [
@@ -127,7 +159,7 @@ async function getDanhSachDanhGiaCuaSinhVien(mssv) {
     }
   }
 
-  return rows.map((r) => {
+  const ketQua = rows.map((r) => {
     const monHocVersion = r.BaiGiang?.ChiTiet?.DangKy?.MonHocVersion;
     const monhoc = monHocVersion?.Monhoc;
     const tk = statsMap[r.BaiGiangId] || { total: 0, average: 0 };
@@ -141,6 +173,30 @@ async function getDanhSachDanhGiaCuaSinhVien(mssv) {
       average: tk.average,
     };
   });
+
+  // Lọc theo field text (nằm ở bảng include lồng sâu) sau khi đã enrich — dữ liệu quy mô nhỏ.
+  const chua = (giaTri, tuKhoa) =>
+    String(giaTri ?? '').toLowerCase().includes(tuKhoa.toLowerCase());
+  const daLoc = ketQua.filter((r) => {
+    if (filters.courseName && !chua(r.courseName, filters.courseName)) return false;
+    if (filters.courseCode && !chua(r.courseCode, filters.courseCode)) return false;
+    if (filters.videoTitle && !chua(r.videoTitle, filters.videoTitle)) return false;
+    return true;
+  });
+
+  // Phân trang trên tập đã lọc (dữ liệu quy mô nhỏ nên cắt trong JS là đủ).
+  const total = daLoc.length;
+  const pageSize = Number.isInteger(pagination.pageSize) && pagination.pageSize > 0
+    ? pagination.pageSize
+    : 15;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const page = Number.isInteger(pagination.page) && pagination.page > 0
+    ? Math.min(pagination.page, totalPages)
+    : 1;
+  const start = (page - 1) * pageSize;
+  const reviews = daLoc.slice(start, start + pageSize);
+
+  return { reviews, total, page, pageSize, totalPages };
 }
 
 /**
