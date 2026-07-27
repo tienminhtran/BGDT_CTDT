@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, PlayCircle, Loader2, Star, MessageSquare, Send, FileBadge } from 'lucide-react'
+import {
+  ArrowLeft,
+  PlayCircle,
+  Loader2,
+  Star,
+  MessageSquare,
+  Send,
+  Pencil,
+  FileBadge,
+} from 'lucide-react'
 import Layout from '../components/Layout'
 import HlsPlayer from '../components/HlsPlayer'
 import { useAuth } from '../contexts/AuthContext'
@@ -95,6 +104,8 @@ function DanhGiaSection({ baiGiangId, dg }) {
   const [binhLuan, setBinhLuan] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
+  // Đã đánh giá rồi thì mặc định chỉ XEM; bấm "Cập nhật" mới mở ô nhập.
+  const [dangSua, setDangSua] = useState(false)
 
   // Đổ lại form khi đổi bài giảng / có đánh giá cũ
   useEffect(() => {
@@ -102,6 +113,7 @@ function DanhGiaSection({ baiGiangId, dg }) {
     setBinhLuan(myRating?.comment || '')
     setHover(0)
     setFormError('')
+    setDangSua(false)
   }, [myRating, baiGiangId])
 
   const submit = async () => {
@@ -115,7 +127,7 @@ function DanhGiaSection({ baiGiangId, dg }) {
       const payload = { stars: soSao, comment: binhLuan.trim() || null }
       if (myRating) await danhGiaService.suaDanhGia(baiGiangId, payload)
       else await danhGiaService.taoDanhGia(baiGiangId, payload)
-      await refresh()
+      await refresh() // refresh -> myRating đổi -> useEffect đóng lại ô nhập
     } catch (err) {
       setFormError(err?.response?.data?.message || 'Không gửi được đánh giá')
     } finally {
@@ -123,7 +135,56 @@ function DanhGiaSection({ baiGiangId, dg }) {
     }
   }
 
+  // Bỏ thay đổi: trả các ô về đúng đánh giá đã lưu rồi đóng ô nhập.
+  const huySua = () => {
+    setSoSao(myRating?.stars || 0)
+    setBinhLuan(myRating?.comment || '')
+    setHover(0)
+    setFormError('')
+    setDangSua(false)
+  }
+
   if (!baiGiangId) return null
+
+  // Đã có đánh giá và chưa bấm "Cập nhật" -> chỉ hiển thị lại đánh giá đã gửi.
+  if (myRating && !dangSua) {
+    return (
+      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+        <h2 className="mb-3 flex items-center gap-2 font-semibold text-slate-800">
+          <MessageSquare size={18} className="text-[#115EA8]" />
+          Đánh giá của bạn
+          {loading ? <Loader2 className="animate-spin text-slate-400" size={15} /> : null}
+        </h2>
+
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <StarsDisplay value={myRating.stars} size={22} />
+            <span className="text-sm text-slate-500">{myRating.stars}/5</span>
+
+            <button
+              type="button"
+              onClick={() => setDangSua(true)}
+              className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-[#115EA8] px-4 py-2 text-sm font-medium text-[#115EA8] transition hover:bg-[#115EA8]/10"
+            >
+              <Pencil size={16} />
+              Cập nhật
+            </button>
+          </div>
+
+          <p className="mt-2 text-sm whitespace-pre-line text-slate-700">
+            {myRating.comment || (
+              <span className="text-slate-400">Bạn chưa viết nhận xét nào.</span>
+            )}
+          </p>
+        </div>
+
+        {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+        <p className="mt-2 text-xs text-slate-400">
+          Bạn đã đánh giá lúc {formatNgay(myRating.createdAt)}
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
@@ -178,6 +239,19 @@ function DanhGiaSection({ baiGiangId, dg }) {
           <span className="text-xs text-slate-400">{binhLuan.length}/255</span>
           <div className="flex items-center gap-3">
             {formError ? <span className="text-xs text-red-600">{formError}</span> : null}
+
+            {/* Đang sửa đánh giá cũ -> cho phép bỏ thay đổi */}
+            {myRating ? (
+              <button
+                type="button"
+                onClick={huySua}
+                disabled={submitting}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 disabled:opacity-60"
+              >
+                Hủy
+              </button>
+            ) : null}
+
             <button
               type="button"
               onClick={submit}
@@ -189,7 +263,7 @@ function DanhGiaSection({ baiGiangId, dg }) {
               ) : (
                 <Send size={16} />
               )}
-              Gửi đánh giá
+              {myRating ? 'Lưu thay đổi' : 'Gửi đánh giá'}
             </button>
           </div>
         </div>
