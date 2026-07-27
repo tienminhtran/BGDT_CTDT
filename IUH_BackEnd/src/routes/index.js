@@ -31,6 +31,10 @@ router.use('/course-subjects', hocPhanMonHocRoutes);
 const baiGiangRoutes = require('./baiGiang.routes');
 router.use('/lectures', baiGiangRoutes);
 
+// Nhật ký thao tác bài giảng (tạo/sửa/xóa video: ai làm, khi nào, IP)
+const lichSuBaiGiangRoutes = require('./lichSuThayDoiBaiGiang.routes');
+router.use('/lecture-history', lichSuBaiGiangRoutes);
+
 // Đánh giá / bình luận bài giảng (SV chấm sao + bình luận)
 const danhGiaRoutes = require('./danhGiaBaiGiang.routes');
 router.use('/reviews', danhGiaRoutes);

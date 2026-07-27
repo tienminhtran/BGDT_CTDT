@@ -78,6 +78,26 @@ const DanhGiaBaiGiang = sequelize.define(
   { tableName: 'tb_DanhGiaBaiGiang' }
 );
 
+// Nhật ký thao tác trên bài giảng (tạo/sửa/xóa): mỗi bản ghi lưu ai làm, lúc nào,
+// lý do và IP. IdBaiGiang NULL được (bài giảng đã bị xóa hẳn thì vẫn giữ lại lịch sử).
+const LichSuThayDoiBaiGiang = sequelize.define(
+  'LichSuThayDoiBaiGiang',
+  {
+    Id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    IdBaiGiang: { type: DataTypes.INTEGER },
+    NgayTao: { type: DataTypes.DATE },
+    NgaySua: { type: DataTypes.DATE },
+    NgayXoa: { type: DataTypes.DATE },
+    MaNguoiTao: { type: DataTypes.STRING(50) },
+    MaNguoiSua: { type: DataTypes.STRING(50) },
+    MaNguoiXoa: { type: DataTypes.STRING(50) },
+    LyDoSua: { type: DataTypes.STRING(500) },
+    LyDoXoa: { type: DataTypes.STRING(500) },
+    DiaChiIP: { type: DataTypes.STRING(45) },
+  },
+  { tableName: 'tb_LichSuThayDoiBaiGiang' }
+);
+
 const SinhVienHocPhan = sequelize.define(
   'SinhVienHocPhan',
   {
@@ -127,6 +147,10 @@ ChiTietDangKyBaiGiang.hasOne(BaiGiang, {
 // Đánh giá thuộc về 1 bài giảng -> để include lấy tên môn/bài giảng khi liệt kê đánh giá của SV.
 DanhGiaBaiGiang.belongsTo(BaiGiang, { foreignKey: 'BaiGiangId', as: 'BaiGiang' });
 
+// Lịch sử thao tác thuộc về 1 bài giảng (FK IdBaiGiang, cho phép NULL).
+LichSuThayDoiBaiGiang.belongsTo(BaiGiang, { foreignKey: 'IdBaiGiang', as: 'BaiGiang' });
+BaiGiang.hasMany(LichSuThayDoiBaiGiang, { foreignKey: 'IdBaiGiang', as: 'LichSuThayDoi' });
+
 ChiTietDangKyBaiGiang.belongsTo(DangKyBaiGiang, {
   foreignKey: 'DangKyBaiGiangId',
   as: 'DangKy',
@@ -169,6 +193,7 @@ module.exports = {
   ChiTietDangKyBaiGiang,
   BaiGiang,
   DanhGiaBaiGiang,
+  LichSuThayDoiBaiGiang,
   SinhVienHocPhan,
   HocPhanMonHoc,
   LoginAttempt,

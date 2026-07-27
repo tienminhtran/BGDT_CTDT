@@ -5,6 +5,7 @@ const multer = require('multer');
 const jwt = require('jsonwebtoken');
 
 const baiGiang = require('../services/baiGiang.service');
+const lichSu = require('../services/lichSuThayDoiBaiGiang.service');
 const luotXem = require('../services/luotXem.service');
 const moodle = require('../services/moodle.service');
 const svhp = require('../services/sinhVienHocPhan.service');
@@ -75,6 +76,14 @@ exports.uploadVideo = async (req, res, next) => {
     }
 
     const result = await baiGiang.uploadVideoBaiGiang(id, req.file);
+
+    // Nhật ký "tạo": mã người do UI gửi kèm form-data (field maNguoiTao), IP backend tự lấy.
+    // ghiLichSu không ném lỗi -> upload đã xong vẫn trả 200 dù ghi nhật ký hụt.
+    await lichSu.ghiLichSu(id, 'tao', {
+      maNguoi: req.body?.maNguoiTao || req.query.maNguoiTao,
+      req,
+    });
+
     res.json({ idBaiGiang: id, ...result });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ message: err.message });
@@ -315,6 +324,15 @@ exports.deleteVideo = async (req, res, next) => {
     }
 
     const result = await baiGiang.deleteVideo(id, teacherKey);
+
+    // Nhật ký "xóa": mã người + lý do do UI gửi (body JSON của DELETE, hoặc query string
+    // cho client không gửi được body), IP backend tự lấy.
+    await lichSu.ghiLichSu(id, 'xoa', {
+      maNguoi: req.body?.maNguoiXoa || req.query.maNguoiXoa,
+      lyDo: req.body?.lyDoXoa || req.query.lyDoXoa,
+      req,
+    });
+
     res.json({ idBaiGiang: id, ...result });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ message: err.message });

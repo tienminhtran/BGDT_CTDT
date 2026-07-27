@@ -7,6 +7,7 @@ export const ROUTES = {
   thumucvideobg: '/thu-muc-video', // Cây thư mục video bài giảng trên MinIO
   thumucfilebg: '/quan-ly-bai-giang', // Quản lý bài giảng theo môn/phiên bản (xem video)
   lichSuThayDoi: '/lich-su-thay-doi', // Lịch sử thay đổi (chưa có nội dung)
+  lichSuBaiGiang: '/lich-su-bai-giang', // Nhật ký upload/xóa video bài giảng
   // Token mờ (AES) do backend cấp, không lộ mã môn/phiên bản -> 1 tham số :token
   coursePlayer: '/bai-giang-dien-tu/:token',
   // Xem 1 video riêng lẻ theo id bài giảng (tb_BaiGiang)

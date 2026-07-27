@@ -11,6 +11,10 @@ export const ENDPOINTS = {
     playbackToken: (lectureId) => `/lectures/${lectureId}/playback-token`,
     teacher: (lectureId) => `/lectures/${lectureId}/teacher`, // xem 1 video theo id (giảng viên)
   },
+  lectureHistory: {
+    list: '/lecture-history', // GET ?limit= -> toàn bộ nhật ký (kèm môn/bài giảng)
+    byLecture: (lectureId) => `/lecture-history/${lectureId}`, // GET nhật ký 1 bài giảng
+  },
   reviews: {
     overview: '/reviews/overview', // GET -> thống kê theo phiên bản môn (giảng viên)
     // GET -> bình luận của 1 phiên bản môn (để xuất Excel)

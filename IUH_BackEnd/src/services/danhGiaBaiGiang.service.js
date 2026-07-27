@@ -53,6 +53,7 @@ async function getDanhGiaCuaSinhVien(baiGiangId, mssv) {
  * Lấy TẤT CẢ đánh giá của 1 SV (mọi bài giảng), kèm tên môn + tên bài giảng để hiển thị.
  * Đường nối enrich: DanhGiaBaiGiang -> BaiGiang -> ChiTiet -> DangKy -> MonHocVersion -> Monhoc.
  * Sắp xếp mới nhất trước. Trả mảng (rỗng nếu SV chưa đánh giá gì).
+ * Bỏ qua đánh giá của bài giảng đã bị xóa hoặc đã xóa video (LinkBaiGiang = null).
  *
  * Hỗ trợ lọc (mọi field đều tùy chọn, cộng dồn AND):
  *   - stars           : lọc đúng số sao (1..5)
@@ -96,10 +97,15 @@ async function getDanhSachDanhGiaCuaSinhVien(mssv, filters = {}, pagination = {}
     order: [['NgayDanhGia', 'DESC']],
     include: [
       {
+        // required: true + LinkBaiGiang != null -> INNER JOIN, bỏ luôn ở tầng DB các đánh giá
+        // của bài giảng đã bị xóa (không còn bản ghi) hoặc đã xóa video (deleteVideo set
+        // LinkBaiGiang = null, giữ lại bản ghi bài giảng).
         model: BaiGiang,
         as: 'BaiGiang',
         attributes: ['Id', 'TenBaiGiang'],
-        required: false,
+        required: true,
+        // bỏ này sẽ lấy luôn bình luận không có video (LinkBaiGiang = null)
+        where: { LinkBaiGiang: { [Op.ne]: null } },
         include: [
           {
             model: ChiTietDangKyBaiGiang,

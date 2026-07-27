@@ -1,22 +1,24 @@
 # API Video Bài giảng
 
-Tài liệu 4 API phục vụ luồng quản lý video bài giảng:
+Tài liệu 5 API phục vụ luồng quản lý video bài giảng:
 
 1. [Danh sách môn học + phiên bản](#1-danh-sách-môn-học--phiên-bản)
 2. [Upload video](#2-upload-video)
 3. [Xem 1 video theo id bài giảng](#3-xem-1-video-theo-id-bài-giảng)
 4. [Xóa video](#4-xóa-video)
+5. [Nhật ký thao tác bài giảng](#5-nhật-ký-thao-tác-bài-giảng)
 
-**Base URL:** `/api` — mục 1 dùng `/api/subjects`, mục 2–4 dùng `/api/lectures`.
+**Base URL:** `/api` — mục 1 dùng `/api/subjects`, mục 2–4 dùng `/api/lectures`,
+mục 5 dùng `/api/lecture-history`.
 Server dev mặc định chạy ở `http://localhost:3000` (biến `PORT`).
 
 ## Xác thực (Headers)
 
-| Header          | Giá trị             | Dùng cho                      |
-| --------------- | ------------------- | ----------------------------- |
-| _(không cần)_   | —                   | Danh sách môn học (mục 1)     |
-| `x-api-key`     | `UPLOAD_API_KEY`    | Upload, Xóa (bảo vệ endpoint) |
-| `x-teacher-key` | `KEY_LOGIN_TEACHER` | Xem (giảng viên), Xóa         |
+| Header          | Giá trị             | Dùng cho                             |
+| --------------- | ------------------- | ------------------------------------ |
+| _(không cần)_   | —                   | Danh sách môn học (mục 1)            |
+| `x-api-key`     | `UPLOAD_API_KEY`    | Upload, Xóa (bảo vệ endpoint)        |
+| `x-teacher-key` | `KEY_LOGIN_TEACHER` | Xem (giảng viên), Xóa, Nhật ký (mục 5) |
 
 > Cả hai key được cấu hình bằng biến môi trường trên server. Thiếu/sai key → `401`
 > (riêng thiếu cấu hình `UPLOAD_API_KEY` trên server → `500`).
@@ -149,13 +151,18 @@ POST /api/lectures/:id/video
 
 **Body (form-data)**
 
-| Field   | Kiểu | Ghi chú                                              |
-| ------- | ---- | --------------------------------------------------- |
-| `video` | file | Chỉ nhận `video/*`. Tối đa `MAX_VIDEO_MB` (mặc định **2048 MB**). |
+| Field        | Kiểu | Bắt buộc | Ghi chú                                              |
+| ------------ | ---- | :------: | --------------------------------------------------- |
+| `video`      | file |    ✅    | Chỉ nhận `video/*`. Tối đa `MAX_VIDEO_MB` (mặc định **2048 MB**). |
+| `maNguoiTao` | text |    ❌    | Mã người thao tác (UI truyền xuống) → ghi vào nhật ký `MaNguoiTao`. Có thể gửi qua query `?maNguoiTao=` thay cho form field. Thiếu → nhật ký vẫn ghi nhưng cột để `NULL`. |
 
 **Ràng buộc trạng thái:** chỉ upload được khi bài giảng **chưa có video** (`status = empty`).
 Nếu đang xử lý hoặc đã có video → `409`. (Có thể kiểm tra trước bằng
 `GET /api/lectures/:id/upload-status`.)
+
+**Nhật ký:** upload trả `200` ⇒ backend tự ghi 1 dòng `tb_LichSuThayDoiBaiGiang`
+(`NgayTao` = giờ SQL Server, `MaNguoiTao`, `DiaChiIP` lấy từ request). Client **không**
+gửi IP. Ghi nhật ký hỏng **không** làm upload thất bại — response vẫn `200`.
 
 **Response `200`**
 
@@ -193,7 +200,8 @@ Nếu đang xử lý hoặc đã có video → `409`. (Có thể kiểm tra trư
 ```bash
 curl -X POST "http://localhost:3000/api/lectures/12/video" \
   -H "x-api-key: <UPLOAD_API_KEY>" \
-  -F "video=@baigiang01.mp4"
+  -F "video=@baigiang01.mp4" \
+  -F "maNguoiTao=GV001"
 ```
 
 ---
@@ -294,9 +302,23 @@ DELETE /api/lectures/:id/video
 | ------- | ---- | ------------ |
 | `id`    | int  | Id bài giảng |
 
+**Body (JSON, tùy chọn)**
+
+| Field        | Kiểu   | Bắt buộc | Ghi chú                                                        |
+| ------------ | ------ | :------: | -------------------------------------------------------------- |
+| `maNguoiXoa` | string |    ❌    | Mã người thao tác (UI truyền xuống) → nhật ký `MaNguoiXoa`      |
+| `lyDoXoa`    | string |    ❌    | Lý do xóa (tối đa 500 ký tự) → nhật ký `LyDoXoa`                |
+
+> Client không gửi được body trên `DELETE` thì dùng query thay thế:
+> `?maNguoiXoa=GV001&lyDoXoa=...` — backend đọc cả hai.
+
 **Ràng buộc trạng thái:** chỉ xóa được khi video đã **hoàn chỉnh** (`status = completed`:
 có đủ `stream/` + `chunk/index.m3u8` + ≥1 `.ts`). Đang xử lý hoặc chưa đủ → `409`
-(tránh xóa nhầm khi đang upload dang dở).
+(tránh xóa nhầm khi đang upload dang dở). Bài giảng **đã khóa** (`DaKhoa = 1`) → `403`.
+
+**Nhật ký:** xóa trả `200` ⇒ backend tự ghi 1 dòng `tb_LichSuThayDoiBaiGiang`
+(`NgayXoa`, `MaNguoiXoa`, `LyDoXoa`, `DiaChiIP` lấy từ request). Ghi nhật ký hỏng
+**không** làm request thất bại.
 
 **Response `200`**
 
@@ -313,6 +335,7 @@ có đủ `stream/` + `chunk/index.m3u8` + ≥1 `.ts`). Đang xử lý hoặc ch
 | ----- | -------------------------------------------------- |
 | `400` | Id không hợp lệ                                     |
 | `401` | Sai `x-api-key` hoặc `x-teacher-key`                |
+| `403` | Bài giảng đã khóa (`DaKhoa = 1`)                    |
 | `404` | Không tìm thấy bài giảng                            |
 | `409` | Video đang xử lý / chưa đủ stream + chunk           |
 | `500` | Chưa cấu hình `UPLOAD_API_KEY`                      |
@@ -322,7 +345,115 @@ có đủ `stream/` + `chunk/index.m3u8` + ≥1 `.ts`). Đang xử lý hoặc ch
 ```bash
 curl -X DELETE "http://localhost:3000/api/lectures/12/video" \
   -H "x-api-key: <UPLOAD_API_KEY>" \
+  -H "x-teacher-key: <KEY_LOGIN_TEACHER>" \
+  -H "Content-Type: application/json" \
+  -d '{"maNguoiXoa":"GV001","lyDoXoa":"Quay lại video mới"}'
+```
+
+---
+
+## 5. Nhật ký thao tác bài giảng
+
+Bảng `tb_LichSuThayDoiBaiGiang` ghi lại ai tạo/sửa/xóa video bài giảng, lúc nào, lý do và
+IP. Mỗi thao tác là **1 dòng riêng**, chỉ điền bộ cột tương ứng (`NgayTao/MaNguoiTao`,
+`NgaySua/MaNguoiSua/LyDoSua`, `NgayXoa/MaNguoiXoa/LyDoXoa`).
+
+Upload (mục 2) và xóa (mục 4) **đã tự ghi** — chỉ dùng `POST` dưới đây khi cần ghi thêm
+ngoài 2 luồng đó (gọi lại sau upload/xóa sẽ tạo **dòng trùng**).
+
+### 5.1 `GET /api/lecture-history/:id`
+
+Nhật ký của 1 bài giảng, **mới nhất trước** (sắp theo `Id` giảm dần).
+
+**Headers**
+
+| Header          | Bắt buộc | Ghi chú             |
+| --------------- | :------: | ------------------- |
+| `x-teacher-key` |    ✅    | `KEY_LOGIN_TEACHER` |
+
+**Response `200`**
+
+```json
+{
+  "idBaiGiang": 12,
+  "items": [
+    {
+      "id": 87,
+      "idBaiGiang": 12,
+      "hanhDong": "xoa",
+      "thoiGian": "2026-07-27T09:15:03.000Z",
+      "maNguoi": "GV001",
+      "lyDo": "Quay lại video mới",
+      "diaChiIP": "10.10.5.21",
+      "ngayTao": null,
+      "ngaySua": null,
+      "ngayXoa": "2026-07-27T09:15:03.000Z",
+      "maNguoiTao": null,
+      "maNguoiSua": null,
+      "maNguoiXoa": "GV001"
+    }
+  ]
+}
+```
+
+| Trường     | Kiểu           | Mô tả                                                            |
+| ---------- | -------------- | ---------------------------------------------------------------- |
+| `hanhDong` | string \| null | `tao` \| `sua` \| `xoa` — suy ra từ cột ngày nào có giá trị       |
+| `thoiGian` | date \| null   | Giá trị của `NgayXoa`/`NgaySua`/`NgayTao` tương ứng `hanhDong`    |
+| `maNguoi`  | string \| null | Mã người thao tác tương ứng `hanhDong`                            |
+| `lyDo`     | string \| null | Lý do sửa/xóa (`tao` luôn `null`)                                 |
+| `diaChiIP` | string \| null | IP client do backend ghi nhận (`trust proxy` → đọc `X-Forwarded-For`) |
+
+> `hanhDong`/`thoiGian`/`maNguoi`/`lyDo` là 4 trường **tiện ích** để đổ bảng; các cột gốc
+> (`ngayTao`, `maNguoiTao`, …) vẫn trả đầy đủ.
+
+### 5.2 `POST /api/lecture-history/:id`
+
+Ghi 1 dòng nhật ký thủ công.
+
+**Headers**
+
+| Header          | Bắt buộc | Ghi chú              |
+| --------------- | :------: | -------------------- |
+| `x-teacher-key` |    ✅    | `KEY_LOGIN_TEACHER`  |
+| `Content-Type`  |    ✅    | `application/json`   |
+
+**Body**
+
+| Field      | Kiểu   | Bắt buộc | Ghi chú                                   |
+| ---------- | ------ | :------: | ----------------------------------------- |
+| `hanhDong` | string |    ✅    | `tao` \| `sua` \| `xoa`                   |
+| `maNguoi`  | string |    ✅    | Mã người thao tác (tối đa 50 ký tự)       |
+| `lyDo`     | string |    ❌    | Lý do (tối đa 500 ký tự); bỏ qua với `tao` |
+
+`DiaChiIP` **không** nhận từ client — backend luôn tự lấy từ request.
+
+**Response `201`**
+
+```json
+{ "message": "Đã ghi nhật ký", "id": 88, "idBaiGiang": 12, "hanhDong": "sua" }
+```
+
+**Lỗi**
+
+| Mã    | Trường hợp                                             |
+| ----- | ------------------------------------------------------ |
+| `400` | Id không hợp lệ / `hanhDong` sai / thiếu `maNguoi`      |
+| `401` | Sai/thiếu `x-teacher-key`                              |
+| `500` | Ghi DB thất bại                                        |
+
+**Ví dụ cURL**
+
+```bash
+# Xem nhật ký
+curl "http://localhost:3000/api/lecture-history/12" \
   -H "x-teacher-key: <KEY_LOGIN_TEACHER>"
+
+# Ghi thủ công
+curl -X POST "http://localhost:3000/api/lecture-history/12" \
+  -H "x-teacher-key: <KEY_LOGIN_TEACHER>" \
+  -H "Content-Type: application/json" \
+  -d '{"hanhDong":"sua","maNguoi":"GV001","lyDo":"Đổi tên bài giảng"}'
 ```
 
 ---

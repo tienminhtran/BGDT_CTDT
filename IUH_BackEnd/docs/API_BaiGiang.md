@@ -165,8 +165,11 @@ x-api-key: <UPLOAD_API_KEY>
 | Field | Kiểu | Bắt buộc | Ràng buộc |
 |-------|------|----------|-----------|
 | `video` | File | ✅ | Định dạng video (`video/*`, vd `.mp4`, `.mov`, `.mkv`). Dung lượng tối đa `MAX_VIDEO_MB` (mặc định **2048 MB**) |
+| `maNguoiTao` | Text | ❌ | Mã người thao tác do UI truyền xuống (tối đa 50 ký tự) → ghi vào nhật ký `tb_LichSuThayDoiBaiGiang.MaNguoiTao`. Cũng nhận qua query `?maNguoiTao=` |
 
 > Mỗi request chỉ nhận **1 file** ở field tên đúng `video`. Upload lại cho cùng `:id` sẽ **ghi đè** video/HLS cũ.
+
+> **Nhật ký:** upload trả `200` ⇒ backend tự ghi 1 dòng nhật ký (`NgayTao`, `MaNguoiTao`, `DiaChiIP`). `DiaChiIP` backend tự lấy từ request, **client không gửi**. Ghi nhật ký hỏng không làm upload thất bại. Xem chi tiết ở [api-video-baigiang.md](./api-video-baigiang.md#5-nhật-ký-thao-tác-bài-giảng).
 
 ### Backend xử lý
 
@@ -216,13 +219,15 @@ x-api-key: <UPLOAD_API_KEY>
 ```bash
 curl -X POST http://localhost:3000/api/lectures/6/video \
   -H "x-api-key: <UPLOAD_API_KEY>" \
-  -F "video=@bai1.mp4"
+  -F "video=@bai1.mp4" \
+  -F "maNguoiTao=GV001"
 ```
 
 **JavaScript (fetch + FormData)**
 ```js
 const form = new FormData()
 form.append('video', file) // file từ <input type="file">
+form.append('maNguoiTao', maGiangVien) // ghi nhật ký ai upload
 
 const res = await fetch(`/api/lectures/${baiGiangId}/video`, {
   method: 'POST',
@@ -240,10 +245,24 @@ client.DefaultRequestHeaders.Add("x-api-key", apiKey); // chỉ cần apiKey, b�
 using var form = new MultipartFormDataContent();
 using var fs = File.OpenRead(filePath);
 form.Add(new StreamContent(fs), "video", Path.GetFileName(filePath));
+form.Add(new StringContent(maNguoiTao), "maNguoiTao"); // ghi nhật ký ai upload
 
 var res = await client.PostAsync(
     $"http://localhost:3000/api/lectures/{baiGiangId}/video", form);
 var json = await res.Content.ReadAsStringAsync();
+```
+
+**C# — xóa video (kèm mã người xóa + lý do)**
+```csharp
+var req = new HttpRequestMessage(HttpMethod.Delete,
+    $"http://localhost:3000/api/lectures/{baiGiangId}/video");
+req.Headers.Add("x-api-key", apiKey);
+req.Headers.Add("x-teacher-key", teacherKey); // DELETE cần cả 2 key
+req.Content = new StringContent(
+    JsonConvert.SerializeObject(new { maNguoiXoa, lyDoXoa }),
+    Encoding.UTF8, "application/json");
+
+var res = await client.SendAsync(req);
 ```
 
 ---
