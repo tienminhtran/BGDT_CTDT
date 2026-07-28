@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useLocation, useNavigate, Navigate } from 'react-router-dom'
 import { LogIn, Lock, User } from 'lucide-react'
 import logo from '../assets/logo-white.svg'
+import TieuDeTrang from '../components/TieuDeTrang'
 import { ROUTES } from '../constants'
 import { useAuthStore } from '../store/authStore'
 
@@ -31,6 +32,8 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-100 p-4">
+      <TieuDeTrang tieuDe="Đăng nhập" />
+
       <form
         onSubmit={guiForm}
         className="w-full max-w-sm overflow-hidden border border-slate-200 bg-white shadow-lg"

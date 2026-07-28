@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { ROUTES } from '../constants'
 import LogoIllustration from '../components/Logoillustration'
+import TieuDeTrang from '../components/TieuDeTrang'
 import logoWhite from '../assets/logo-white.svg'
 import buoc1 from '../assets/Buoc_1.png'
 import buoc2 from '../assets/Buoc_2.png'
@@ -74,6 +75,11 @@ export default function ManualPage() {
 
   return (
     <div className="min-h-screen w-full bg-slate-50 text-slate-800">
+      <TieuDeTrang
+        tieuDe="Hướng dẫn sử dụng"
+        moTa="Các bước đăng nhập và xem bài giảng điện tử trên hệ thống IUH."
+      />
+
       {/* ===== Thanh điều hướng ===== */}
       <header className="sticky top-0 z-30 border-b border-white/10 bg-blue-800/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">

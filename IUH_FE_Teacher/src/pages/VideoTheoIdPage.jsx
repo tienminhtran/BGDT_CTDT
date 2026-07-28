@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { PlayCircle, Loader2, AlertTriangle } from 'lucide-react'
 import HlsPlayer from '../components/HlsPlayer'
+import TieuDeTrang from '../components/TieuDeTrang'
 import { baiGiangService } from '../services'
 
 // Xem 1 video riêng lẻ CHỈ BẰNG id (tb_BaiGiang). Backend kiểm tra KEY_LOGIN_TEACHER
@@ -34,6 +35,14 @@ export default function VideoTheoIdPage() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
+      {/* Link này hay được gửi ra ngoài -> ưu tiên tên bài giảng để người nhận
+          nhìn tab là biết đang mở video nào. */}
+      <TieuDeTrang
+        tieuDe={
+          data?.tenBaiGiang || (loading ? 'Đang tải video' : error ? 'Không tải được video' : 'Video bài giảng')
+        }
+      />
+
       {data?.url ? (
         <HlsPlayer
           key={data.baiGiangId}

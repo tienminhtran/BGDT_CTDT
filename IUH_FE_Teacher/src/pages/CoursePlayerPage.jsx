@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { PlayCircle, Loader2, Maximize2, Minimize2, ChevronDown } from 'lucide-react'
 import Layout from '../components/Layout'
 import HlsPlayer from '../components/HlsPlayer'
+import TieuDeTrang from '../components/TieuDeTrang'
 import { baiGiangService } from '../services'
 
 const tieuDe = (v) => v?.tenBaiGiang || v?.noiDungChuong || 'Bài giảng'
@@ -131,6 +132,9 @@ export default function CoursePlayerPage() {
 
   return (
     <Layout>
+      <TieuDeTrang
+        tieuDe={videos.subjectName ? `Môn ${videos.subjectName}` : 'Bài giảng'}
+      />
       <main className="mx-auto w-full max-w-[1600px] px-4 py-6">
         <div className={expanded ? 'grid gap-6' : 'grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px]'}>
           {/* ===== Cột video (trái) ===== */}

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { BookOpen, RefreshCcw } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import TieuDeTrang from '../components/TieuDeTrang'
 import { authService } from '../services'
 import { ROUTES } from '../constants'
 import bgImage from '../assets/bg.jpg'
@@ -111,6 +112,11 @@ export default function HomePage() {
 
   return (
     <div className="w-full text-slate-800">
+      <TieuDeTrang
+        tieuDe="Đăng nhập"
+        moTa="Hệ thống bài giảng điện tử Trường Đại học Công nghiệp TP.HCM."
+      />
+
       {/* ===== 1. HERO & ĐĂNG NHẬP ===== */}
       <section className="relative flex min-h-screen w-full items-center overflow-hidden">
         {/* Lớp ảnh nền mờ (chỉ blur ảnh, không blur nội dung) */}

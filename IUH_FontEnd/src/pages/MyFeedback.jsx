@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Star, Loader2, Search, X, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react'
 import Layout from '../components/Layout'
+import TieuDeTrang from '../components/TieuDeTrang'
 import { useAuth } from '../contexts/AuthContext'
 import { getDanhGiaCuaSinhVienList } from '../services/danhGiaService'
 import { createCourseToken } from '../services/baiGiangService'
@@ -242,6 +243,11 @@ export default function MyFeedback() {
 
   return (
     <Layout user={user} onLogout={logout}>
+      <TieuDeTrang
+        tieuDe="Đánh giá của tôi"
+        moTa="Xem lại toàn bộ đánh giá và bình luận bạn đã gửi cho các bài giảng."
+      />
+
       {/* Neo tìm kiếm: nút cố định mép trái, bấm để mở panel tìm kiếm dọc. */}
       <button
         type="button"

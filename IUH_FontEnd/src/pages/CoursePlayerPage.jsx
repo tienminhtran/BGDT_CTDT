@@ -11,6 +11,7 @@ import {
   FileBadge,
 } from 'lucide-react'
 import Layout from '../components/Layout'
+import TieuDeTrang from '../components/TieuDeTrang'
 import HlsPlayer from '../components/HlsPlayer'
 import { useAuth } from '../contexts/AuthContext'
 import prohibitedSvg from '../assets/prohibited.svg'
@@ -405,6 +406,7 @@ export default function CoursePlayerPage() {
   if (access.loading) {
     return (
       <Layout user={user} onLogout={logout}>
+        <TieuDeTrang tieuDe="Đang mở bài giảng" />
         <main className="mx-auto flex w-full max-w-6xl items-center justify-center gap-2 px-4 py-20 text-slate-500">
           <Loader2 className="animate-spin" size={18} />
           Đang kiểm tra quyền truy cập...
@@ -416,6 +418,7 @@ export default function CoursePlayerPage() {
   if (!access.allowed) {
     return (
       <Layout user={user} onLogout={logout}>
+        <TieuDeTrang tieuDe="Không có quyền truy cập" />
         <main className="mx-auto w-full max-w-full px-4 py-6">
           {BackButton}
           <div className="mx-auto mt-10 max-w-md rounded-xl border border-amber-200 bg-amber-50 p-6 text-center">
@@ -438,6 +441,15 @@ export default function CoursePlayerPage() {
 
   return (
     <Layout user={user} onLogout={logout}>
+      {/* Tên môn về sau khi API trả -> title đổi theo, trước đó dùng nhãn chung. */}
+      <TieuDeTrang
+        tieuDe={videos.subjectName ? `Môn ${videos.subjectName}` : 'Bài giảng'}
+        moTa={
+          videos.subjectName
+            ? `Bài giảng điện tử môn ${videos.subjectName}.`
+            : undefined
+        }
+      />
       <main className="mx-auto w-full max-w-[1600px] px-4 py-6">
         {BackButton}
 

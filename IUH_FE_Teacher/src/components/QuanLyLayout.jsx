@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import Layout from './Layout'
 import TabBar from './TabBar'
+import TieuDeTrang from './TieuDeTrang'
 import KeepAliveOutlet from './KeepAliveOutlet'
 import { NHOM_MENU, timMenuTheoPath } from '../constants'
 import { useTabsStore } from '../store/tabsStore'
@@ -37,8 +38,15 @@ export default function QuanLyLayout() {
     else setMoDrawer((v) => !v)
   }
 
+  // Tiêu đề tab trình duyệt đặt Ở ĐÂY chứ không trong từng trang: keep-alive giữ mọi
+  // tab đang mở cùng mount, nên nếu mỗi trang tự render <title> thì trình duyệt sẽ lấy
+  // thẻ đầu tiên (tab mở sớm nhất) thay vì tab đang xem. Lấy nhãn theo pathname hiện tại.
+  const tabDangXem = timMenuTheoPath(pathname)
+
   return (
     <Layout onToggleMenu={toggleMenu}>
+      <TieuDeTrang tieuDe={tabDangXem?.label} />
+
       <div className="flex min-h-[calc(100vh-3.5rem)]">
         {/* Lớp phủ mờ khi drawer mở (chỉ có trên điện thoại) */}
         {moDrawer && (
