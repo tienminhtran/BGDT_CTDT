@@ -11,6 +11,33 @@ const baiGiang = require('./baiGiang.service');
 const svhp = require('./sinhVienHocPhan.service');
 
 /**
+ * Chuyển 1 Date thành mốc so sánh dùng được với cột DATETIME của SQL Server.
+ *
+ * Trả về `literal` chứ không phải Date/chuỗi thường, vì hai lý do:
+ *
+ *  1. Sequelize (dialect mssql) map DataTypes.DATE thành DATETIMEOFFSET nên sinh ra
+ *     chuỗi kèm offset: N'2026-07-21 17:00:00.000 +00:00'. Cột NgayDanhGia là kiểu
+ *     DATETIME (không phải DATETIME2/DATETIMEOFFSET) mà DATETIME không nhận chuỗi có
+ *     offset -> SQL Server báo lỗi 241 "Conversion failed when converting date and/or
+ *     time from character string". Truyền chuỗi thường cũng không thoát: Sequelize
+ *     thấy thuộc tính khai báo là DATE nên vẫn parse lại thành Date rồi thêm offset.
+ *
+ *  2. Date bị quy về UTC khi serialize. NgayDanhGia lại do DB ghi bằng GETDATE() tức
+ *     giờ máy chủ DB, nên lọc theo UTC sẽ lệch đúng bằng chênh lệch múi giờ (7 tiếng
+ *     ở VN) - biên ngày đầu/cuối lấy sai dữ liệu mà KHÔNG báo lỗi gì.
+ *
+ * Chuỗi được dựng hoàn toàn từ các thành phần số của Date (getFullYear, getMonth...)
+ * nên không có đường nào để chèn SQL, dù đi qua literal.
+ */
+function mocThoiGianSql(d) {
+  const p = (n, rong = 2) => String(n).padStart(rong, '0');
+  const s =
+    `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ` +
+    `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}.${p(d.getMilliseconds(), 3)}`;
+  return literal(`'${s}'`);
+}
+
+/**
  * Helper: kiểm tra 1 sinh viên (MSSV) có quyền bình luận/đánh giá 1 bài giảng không.
  *
  * SV chỉ được đánh giá bài giảng của môn mình đang học. Đường nối:
@@ -85,10 +112,11 @@ async function getDanhSachDanhGiaCuaSinhVien(mssv, filters = {}, pagination = {}
     if (Object.getOwnPropertySymbols(sao).length) where.SoSao = sao;
   }
 
-  // Lọc khoảng ngày đánh giá.
+  // Lọc khoảng ngày đánh giá. Truyền chuỗi đã định dạng, không truyền Date -
+  // xem mocThoiGianSql() để biết vì sao.
   const ngay = {};
-  if (filters.dateFrom instanceof Date) ngay[Op.gte] = filters.dateFrom;
-  if (filters.dateTo instanceof Date) ngay[Op.lte] = filters.dateTo;
+  if (filters.dateFrom instanceof Date) ngay[Op.gte] = mocThoiGianSql(filters.dateFrom);
+  if (filters.dateTo instanceof Date) ngay[Op.lte] = mocThoiGianSql(filters.dateTo);
   if (Object.getOwnPropertySymbols(ngay).length) where.NgayDanhGia = ngay;
 
   const rows = await DanhGiaBaiGiang.findAll({
