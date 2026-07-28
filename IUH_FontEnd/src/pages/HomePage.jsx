@@ -139,7 +139,7 @@ export default function HomePage() {
               Đại học Công nghiệp TP.HCM
             </p>
 
-            <ol className="mt-6 space-y-4 text-[15px] leading-relaxed text-black/90">
+            <ol className="mt-6 space-y-4 text-[15px] leading-relaxed text-black/90 text-justify">
               <li className="flex gap-2">
                 <span className="font-semibold">1.</span>
                 <span>
