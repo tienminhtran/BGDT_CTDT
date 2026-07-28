@@ -164,7 +164,7 @@ function DanhGiaSection({ baiGiangId, dg }) {
             <button
               type="button"
               onClick={() => setDangSua(true)}
-              className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-[#115EA8] px-4 py-2 text-sm font-medium text-[#115EA8] transition hover:bg-[#115EA8]/10"
+              className="ml-auto inline-flex items-center gap-1.5 border border-[#115EA8] px-4 py-2 text-sm font-medium text-[#115EA8] transition hover:bg-[#115EA8]/10"
             >
               <Pencil size={16} />
               Cập nhật
@@ -246,7 +246,7 @@ function DanhGiaSection({ baiGiangId, dg }) {
                 type="button"
                 onClick={huySua}
                 disabled={submitting}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 disabled:opacity-60"
+                className="border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 disabled:opacity-60"
               >
                 Hủy
               </button>
@@ -256,7 +256,7 @@ function DanhGiaSection({ baiGiangId, dg }) {
               type="button"
               onClick={submit}
               disabled={submitting}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#115EA8] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0d4a82] disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 bg-[#115EA8] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0d4a82] disabled:opacity-60"
             >
               {submitting ? (
                 <Loader2 className="animate-spin" size={16} />
