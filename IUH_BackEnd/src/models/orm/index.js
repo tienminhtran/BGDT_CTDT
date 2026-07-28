@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../../config/sequelize');
+const { TRANG_THAI_XU_LY_CHUNK } = require('../baiGiang.model');
 
 /**
  * Định nghĩa các Sequelize model (ORM) cho luồng bài giảng.
@@ -60,6 +61,42 @@ const BaiGiang = sequelize.define(
     LuotXem: { type: DataTypes.INTEGER },
     // BIT NULL DEFAULT 0 -> null nghĩa là chưa khóa. Bài giảng đã khóa thì cấm xóa video.
     DaKhoa: { type: DataTypes.BOOLEAN },
+
+    // --- Tiến trình xử lý (chunk hóa) video, xem sql/05_them_cot_xu_ly_chunk.sql ---
+    // ChuaXuLy | DangCho | DangXuLy | HoanThanh | ThatBai
+    TrangThaiXuLyChunk: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      defaultValue: TRANG_THAI_XU_LY_CHUNK.CHUA_XU_LY,
+      validate: { isIn: [Object.values(TRANG_THAI_XU_LY_CHUNK)] },
+    },
+    // NVARCHAR(MAX) chứa JSON array các chunk. Dialect mssql không có kiểu JSON
+    // -> tự parse/stringify để service làm việc với mảng JS.
+    DanhSachChunk: {
+      type: DataTypes.TEXT,
+      get() {
+        const raw = this.getDataValue('DanhSachChunk');
+        if (!raw) return null;
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return null; // dữ liệu hỏng -> coi như chưa có chunk, không làm vỡ response
+        }
+      },
+      set(value) {
+        this.setDataValue(
+          'DanhSachChunk',
+          value == null || typeof value === 'string' ? value : JSON.stringify(value)
+        );
+      },
+    },
+    ThoiLuongGiay: { type: DataTypes.FLOAT }, // tổng thời lượng video (giây)
+    NgayBatDauXuLy: { type: DataTypes.DATE },
+    NgayHoanThanhXuLy: { type: DataTypes.DATE },
+    LoiXuLy: { type: DataTypes.TEXT },
+    SoLanThuLai: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+    NgayThuLaiSauKhi: { type: DataTypes.DATE }, // mốc sớm nhất được bốc lại (backoff)
+    MaJobXuLy: { type: DataTypes.STRING(100) }, // id lượt chạy worker, để đối chiếu log
   },
   { tableName: 'tb_BaiGiang' }
 );
@@ -187,6 +224,7 @@ SinhVienHocPhan.hasMany(HocPhanMonHoc, {
 
 module.exports = {
   sequelize,
+  TRANG_THAI_XU_LY_CHUNK,
   Monhoc,
   MonhocVersion,
   DangKyBaiGiang,

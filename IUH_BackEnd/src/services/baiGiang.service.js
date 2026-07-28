@@ -1,7 +1,4 @@
-const fs = require('fs');
 const path = require('path');
-const os = require('os');
-const { spawn } = require('child_process');
 
 const { Op } = require('sequelize');
 const { minioClient, BUCKET, ensureBucket, toObjectKey } = require('../config/minio');
@@ -11,19 +8,12 @@ const {
   DangKyBaiGiang,
   ChiTietDangKyBaiGiang,
   BaiGiang,
+  TRANG_THAI_XU_LY_CHUNK: TT,
 } = require('../models/orm');
+const spool = require('../utils/spoolVideo');
 
-// Ưu tiên: FFMPEG_PATH (nếu khai báo) -> binary của ffmpeg-static -> 'ffmpeg' trên PATH
-let ffmpegStatic = null;
-try {
-  ffmpegStatic = require('ffmpeg-static');
-} catch (_) {
-  /* không có ffmpeg-static thì bỏ qua */
-}
-const FFMPEG =
-  (process.env.FFMPEG_PATH && process.env.FFMPEG_PATH.trim()) || ffmpegStatic || 'ffmpeg';
-console.log('...ffmpeg dùng cho HLS:', FFMPEG);
-const HLS_TIME = parseInt(process.env.HLS_SEGMENT_TIME, 10) || 6; // độ dài mỗi chunk (giây)
+// Phần ffmpeg/HLS nằm ở xuLyChunk.service.js (worker nền) - service này chỉ lo
+// MinIO + DB, không còn transcode trong request nữa.
 
 // Bỏ ký tự không an toàn cho đường dẫn object trên MinIO (giữ chữ, số, . _ -)
 function sanitizeSegment(value) {
@@ -124,37 +114,6 @@ async function getViTriBaiGiang(idBaiGiang) {
   };
 }
 
-// Chuyển video gốc -> HLS (index.m3u8 + các .ts) vào outDir bằng ffmpeg.
-function transcodeToHls(inputPath, outDir) {
-  return new Promise((resolve, reject) => {
-    const args = [
-      '-y',
-      '-i', inputPath,
-      '-c:v', 'libx264',
-      '-preset', 'veryfast',
-      '-c:a', 'aac',
-      '-hls_time', String(HLS_TIME),
-      '-hls_playlist_type', 'vod',
-      '-hls_segment_filename', path.join(outDir, 'seg_%03d.ts'),
-      path.join(outDir, 'index.m3u8'),
-    ];
-
-    const proc = spawn(FFMPEG, args);
-    let stderr = '';
-    proc.stderr.on('data', (d) => { stderr += d.toString(); });
-    proc.on('error', (e) => {
-      // Chỉ coi là "không có ffmpeg" khi đúng lỗi không tìm thấy binary (ENOENT).
-      const err = new Error(`Không chạy được ffmpeg (${FFMPEG}): ${e.message}`);
-      if (e.code === 'ENOENT') err.code = 'FFMPEG_UNAVAILABLE';
-      reject(err);
-    });
-    proc.on('close', (code) => {
-      if (code === 0) return resolve();
-      reject(new Error(`ffmpeg thoát với mã ${code}: ${stderr.slice(-500)}`));
-    });
-  });
-}
-
 // Liệt kê tên các object dưới 1 prefix trên MinIO (đệ quy).
 async function listObjectNames(prefix) {
   const names = [];
@@ -163,6 +122,13 @@ async function listObjectNames(prefix) {
     if (obj.name) names.push(obj.name);
   }
   return names;
+}
+
+// Xóa toàn bộ object dưới 1 prefix trên MinIO. Không có gì để xóa thì bỏ qua.
+async function xoaObjectTheoPrefix(prefix) {
+  const keys = await listObjectNames(prefix);
+  if (keys.length) await minioClient.removeObjects(BUCKET, keys);
+  return keys.length;
 }
 
 /**
@@ -219,16 +185,83 @@ async function trangThaiUploadTheoDuongDan(duongDan) {
 }
 
 /**
- * Kiểm tra trạng thái thư mục lưu trữ của 1 bài giảng trước khi upload video.
+ * Trạng thái xử lý của 1 bài giảng. NGUỒN SỰ THẬT là cột TrangThaiXuLyChunk trong DB,
+ * không phải danh sách object trên MinIO.
+ *
+ * Lý do: từ khi cắt chunk chạy nền, "có video gốc nhưng chưa có chunk" là trạng thái
+ * bình thường và kéo dài (đang xếp hàng chờ worker), không còn là dấu hiệu bất thường
+ * như thời còn cắt chunk ngay trong request. Suy trạng thái từ MinIO sẽ không phân biệt
+ * được "đang chờ", "đang chạy" và "đã thất bại".
+ *
+ * Riêng bài giảng cũ (TrangThaiXuLyChunk vẫn là 'ChuaXuLy' vì upload từ trước khi có
+ * worker) thì đối chiếu MinIO như logic cũ - xem trangThaiUploadTheoDuongDan.
+ *
+ * @returns {Promise<{ canUpload, status, trangThaiXuLy, message, coStream, coChunk }>}
+ *   status: 'empty' | 'processing' | 'completed' | 'failed' (giữ nguyên bộ giá trị cũ
+ *   để client hiện có không vỡ, chỉ thêm 'failed')
+ */
+async function trangThaiUploadTheoBaiGiang(idBaiGiang, duongDan) {
+  const bg = await BaiGiang.findByPk(idBaiGiang, {
+    attributes: ['Id', 'LinkBaiGiang', 'LinkChunkBaiGiang', 'TrangThaiXuLyChunk', 'LoiXuLy'],
+  });
+
+  const trangThaiXuLy = bg?.TrangThaiXuLyChunk || TT.CHUA_XU_LY;
+  const coStream = !!bg?.LinkBaiGiang;
+  const coChunk = !!bg?.LinkChunkBaiGiang;
+
+  // Đang xếp hàng hoặc worker đang chạy -> chặn upload đè lên chính video đang xử lý.
+  if (trangThaiXuLy === TT.DANG_CHO || trangThaiXuLy === TT.DANG_XU_LY) {
+    return {
+      canUpload: false,
+      status: 'processing',
+      trangThaiXuLy,
+      message:
+        trangThaiXuLy === TT.DANG_CHO
+          ? 'Video đang chờ xử lý, vui lòng thử lại sau'
+          : 'Video đang được xử lý, vui lòng thử lại sau',
+      coStream,
+      coChunk,
+    };
+  }
+
+  if (trangThaiXuLy === TT.HOAN_THANH) {
+    return {
+      canUpload: false,
+      status: 'completed',
+      trangThaiXuLy,
+      message: 'Bài giảng đã có video, không thể upload thêm',
+      coStream,
+      coChunk,
+    };
+  }
+
+  // Thất bại -> CHO upload lại: đó là cách giảng viên tự chạy lại sau khi đã hết lượt retry.
+  if (trangThaiXuLy === TT.THAT_BAI) {
+    return {
+      canUpload: true,
+      status: 'failed',
+      trangThaiXuLy,
+      message: `Xử lý video thất bại${bg?.LoiXuLy ? `: ${bg.LoiXuLy}` : ''}. Có thể upload lại.`,
+      coStream,
+      coChunk,
+    };
+  }
+
+  // 'ChuaXuLy': dữ liệu cũ (hoặc chưa từng upload) -> giữ nguyên cách cũ là soi MinIO.
+  return { ...(await trangThaiUploadTheoDuongDan(duongDan)), trangThaiXuLy };
+}
+
+/**
+ * Kiểm tra trạng thái lưu trữ của 1 bài giảng trước khi upload video.
  * Dùng cho client check trước (GET) và cho chính uploadVideoBaiGiang chặn upload.
  * @param {number} idBaiGiang
- * @returns {Promise<{ canUpload, status, message, prefix, prefixStream, prefixChunk, coStream, coChunk }>}
+ * @returns {Promise<{ canUpload, status, trangThaiXuLy, message, prefix, prefixStream, prefixChunk, coStream, coChunk }>}
  */
 async function kiemTraTrangThaiUpload(idBaiGiang) {
   await ensureBucket();
   const viTri = await getViTriBaiGiang(idBaiGiang);
   const duongDan = duongDanBaiGiang(viTri);
-  const trangThai = await trangThaiUploadTheoDuongDan(duongDan);
+  const trangThai = await trangThaiUploadTheoBaiGiang(idBaiGiang, duongDan);
   return {
     ...trangThai,
     prefix: duongDan.duoi, // phần chung [ma_tuquan]/[version]/[idChiTiet]
@@ -245,25 +278,24 @@ async function uploadFile(objectName, filePath) {
   return objectName;
 }
 
-// Lưu object key (tương đối) vào DB. KHÔNG lưu endpoint/bucket (lấy từ .env khi phát).
-async function capNhatLink(idBaiGiang, keyBaiGiang, keyChunk) {
-  await BaiGiang.update(
-    { LinkBaiGiang: keyBaiGiang, LinkChunkBaiGiang: keyChunk },
-    { where: { Id: idBaiGiang } }
-  );
-}
-
 /**
- * Upload 1 video bài giảng lên MinIO.
+ * Upload 1 video bài giảng lên MinIO rồi ĐƯA VÀO HÀNG ĐỢI cắt chunk, KHÔNG chạy
+ * ffmpeg tại đây.
+ *
+ * Trước kia hàm này transcode HLS ngay trong request: một video dài chiếm CPU hàng
+ * phút và giữ kết nối HTTP suốt thời gian đó, làm nghẽn cả các request khác. Giờ API
+ * chỉ đẩy file gốc lên MinIO, đánh dấu 'DangCho' rồi trả về ngay; worker nền
+ * (xuLyChunk.service) sẽ bốc job và cắt chunk với số job song song có giới hạn.
+ *
  * Cấu trúc thư mục (đuôi chung = [ma_tuquan]/[version]/[idChiTiet]):
- *   - stream/<đuôi>/video.<ext>          -> LinkBaiGiang (video gốc)
- *   - chunk/<đuôi>/index.m3u8 + *.ts     -> LinkChunkBaiGiang (HLS, nếu có ffmpeg)
+ *   - stream/<đuôi>/video.<ext>          -> LinkBaiGiang (video gốc, ghi ở đây)
+ *   - chunk/<đuôi>/index.m3u8 + *.ts     -> LinkChunkBaiGiang (worker ghi sau)
  *
  * DB chỉ lưu object key (đường dẫn tương đối), endpoint MinIO lấy từ .env.
  *
  * @param {number} idBaiGiang
  * @param {{ path:string, originalname:string }} file  file tạm do multer lưu
- * @returns {Promise<{ prefix, coVideo, coHls, hlsSkipped, message }>}
+ * @returns {Promise<{ prefix, coVideo, coHls, trangThaiXuLy, message }>}
  */
 async function uploadVideoBaiGiang(idBaiGiang, file) {
   if (!file || !file.path) {
@@ -278,8 +310,8 @@ async function uploadVideoBaiGiang(idBaiGiang, file) {
   // Thư mục cấp cuối = id chi tiết đăng ký bài giảng (idChiTiet)
   const duongDan = duongDanBaiGiang(viTri);
 
-  // 0) Kiểm tra trạng thái thư mục: đã có video / đang xử lý -> chặn upload.
-  const trangThai = await trangThaiUploadTheoDuongDan(duongDan);
+  // 0) Đã có video / đang xử lý -> chặn upload.
+  const trangThai = await trangThaiUploadTheoBaiGiang(idBaiGiang, duongDan);
   if (!trangThai.canUpload) {
     const err = new Error(trangThai.message);
     err.status = 409; // Conflict: bài giảng đã có video hoặc đang xử lý
@@ -287,44 +319,51 @@ async function uploadVideoBaiGiang(idBaiGiang, file) {
     throw err;
   }
 
-  // 1) Upload video gốc vào stream/... -> lưu object key
-  const ext = path.extname(file.originalname || '') || '.mp4';
-  const keyBaiGiang = await uploadFile(`${duongDan.stream}/video${ext.toLowerCase()}`, file.path);
-
-  // 2) Tạo HLS chunk vào chunk/... (nếu có ffmpeg)
-  let keyChunk = null;
-  let hlsSkipped = false;
-  let message = 'Upload thành công';
-
-  const hlsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hls-'));
-  try {
-    await transcodeToHls(file.path, hlsDir);
-
-    const files = fs.readdirSync(hlsDir);
-    for (const name of files) {
-      await uploadFile(`${duongDan.chunk}/${name}`, path.join(hlsDir, name));
-    }
-    keyChunk = `${duongDan.chunk}/index.m3u8`;
-  } catch (e) {
-    if (e.code === 'FFMPEG_UNAVAILABLE') {
-      hlsSkipped = true;
-      message = 'Upload video gốc thành công; bỏ qua tạo HLS chunk vì không có ffmpeg';
-    } else {
-      throw e; // lỗi transcode thật sự -> báo ra ngoài
-    }
-  } finally {
-    fs.rmSync(hlsDir, { recursive: true, force: true });
+  // 1) Upload lại sau khi thất bại: dọn chunk dở dang của lượt trước để worker
+  //    không trộn segment cũ với segment mới.
+  if (trangThai.status === 'failed') {
+    await xoaObjectTheoPrefix(duongDan.chunk);
   }
 
-  await capNhatLink(idBaiGiang, keyBaiGiang, keyChunk);
+  // 2) Upload video gốc vào stream/... -> lưu object key
+  const ext = (path.extname(file.originalname || '') || '.mp4').toLowerCase();
+  const keyBaiGiang = await uploadFile(`${duongDan.stream}/video${ext}`, file.path);
+
+  // 3) Giữ file gốc lại cho worker. Multer xóa file tạm ngay khi response xong nên
+  //    không chuyển sang spool thì worker phải tải lại từ MinIO. Hỏng bước này cũng
+  //    không sao - worker có đường lùi là tải từ MinIO.
+  try {
+    spool.luuVaoSpool(idBaiGiang, file.path, ext);
+  } catch (e) {
+    console.warn(`Không lưu được video vào spool (bài giảng ${idBaiGiang}):`, e.message);
+  }
+
+  // 4) Vào hàng đợi. Reset sạch dấu vết lượt xử lý trước (lỗi, số lần thử, mốc backoff)
+  //    để job mới bắt đầu từ đầu.
+  await BaiGiang.update(
+    {
+      LinkBaiGiang: keyBaiGiang,
+      LinkChunkBaiGiang: null,
+      TrangThaiXuLyChunk: TT.DANG_CHO,
+      DanhSachChunk: null,
+      ThoiLuongGiay: null,
+      NgayBatDauXuLy: null,
+      NgayHoanThanhXuLy: null,
+      LoiXuLy: null,
+      SoLanThuLai: 0,
+      NgayThuLaiSauKhi: null,
+      MaJobXuLy: null,
+    },
+    { where: { Id: idBaiGiang } }
+  );
 
   // Không trả URL MinIO; chỉ báo trạng thái. Phát video qua proxy có token.
   return {
     prefix: duongDan.duoi,
-    coVideo: !!keyBaiGiang,
-    coHls: !!keyChunk,
-    hlsSkipped,
-    message,
+    coVideo: true,
+    coHls: false, // chunk chưa có -> client hiển thị "đang xử lý" cho tới khi worker xong
+    trangThaiXuLy: TT.DANG_CHO,
+    message: 'Upload thành công, video đang chờ xử lý',
   };
 }
 
@@ -349,7 +388,7 @@ async function listChiTietByVersion(monHocVersionId) {
       {
         model: BaiGiang,
         as: 'BaiGiang',
-        attributes: ['Id', 'TenBaiGiang', 'LinkBaiGiang', 'LinkChunkBaiGiang'],
+        attributes: ['Id', 'TenBaiGiang', 'LinkBaiGiang', 'LinkChunkBaiGiang', 'TrangThaiXuLyChunk'],
         required: false,
       },
     ],
@@ -370,6 +409,9 @@ async function listChiTietByVersion(monHocVersionId) {
     TenBaiGiang: ct.BaiGiang?.TenBaiGiang ?? null,
     coVideo: !!ct.BaiGiang?.LinkBaiGiang,
     coHls: !!ct.BaiGiang?.LinkChunkBaiGiang,
+    // Cho UI phân biệt "đang chờ cắt chunk" với "đã thất bại" - hai trường hợp này
+    // đều là coVideo=true, coHls=false nên không suy ra được từ 2 cờ trên.
+    trangThaiXuLy: ct.BaiGiang?.TrangThaiXuLyChunk ?? null,
   }));
 }
 
@@ -386,7 +428,10 @@ async function listVideos(maMon, version) {
   const versionWhere = version ? { version } : undefined;
 
   const rows = await BaiGiang.findAll({
-    attributes: ['Id', 'TenBaiGiang', 'NoiDungBaiGiang', 'LinkBaiGiang', 'LinkChunkBaiGiang', 'LuotXem'],
+    attributes: [
+      'Id', 'TenBaiGiang', 'NoiDungBaiGiang', 'LinkBaiGiang', 'LinkChunkBaiGiang', 'LuotXem',
+      'TrangThaiXuLyChunk', 'ThoiLuongGiay',
+    ],
     where: { LinkBaiGiang: { [Op.ne]: null } },
     include: [
       {
@@ -461,6 +506,8 @@ async function listVideos(maMon, version) {
     version: bg.ChiTiet.DangKy.MonHocVersion.version,
     coVideo: !!bg.LinkBaiGiang,
     coHls: !!bg.LinkChunkBaiGiang,
+    trangThaiXuLy: bg.TrangThaiXuLyChunk ?? null,
+    thoiLuongGiay: bg.ThoiLuongGiay ?? null,
     luotXem: bg.LuotXem ?? 0,
   }));
 
@@ -480,7 +527,10 @@ async function listVideos(maMon, version) {
  */
 async function getBaiGiangById(idBaiGiang) {
   const bg = await BaiGiang.findByPk(idBaiGiang, {
-    attributes: ['Id', 'TenBaiGiang', 'NoiDungBaiGiang', 'LinkBaiGiang', 'LinkChunkBaiGiang', 'LuotXem'],
+    attributes: [
+      'Id', 'TenBaiGiang', 'NoiDungBaiGiang', 'LinkBaiGiang', 'LinkChunkBaiGiang', 'LuotXem',
+      'TrangThaiXuLyChunk', 'ThoiLuongGiay', 'LoiXuLy',
+    ],
     include: [
       {
         model: ChiTietDangKyBaiGiang,
@@ -527,6 +577,11 @@ async function getBaiGiangById(idBaiGiang) {
     version: mv.version,
     coVideo: !!bg.LinkBaiGiang,
     coHls: !!bg.LinkChunkBaiGiang,
+    trangThaiXuLy: bg.TrangThaiXuLyChunk ?? null,
+    thoiLuongGiay: bg.ThoiLuongGiay ?? null,
+    // Chỉ lộ thông báo lỗi khi thật sự đã thất bại, tránh trả lỗi cũ của lượt retry
+    // trước trong lúc job vẫn đang chạy lại.
+    loiXuLy: bg.TrangThaiXuLyChunk === TT.THAT_BAI ? bg.LoiXuLy ?? null : null,
     luotXem: bg.LuotXem ?? 0,
   };
 }
@@ -656,14 +711,15 @@ async function deleteVideo(idBaiGiang, teacherKey) {
   const viTri = await getViTriBaiGiang(idBaiGiang);
   const duongDan = duongDanBaiGiang(viTri);
 
-  // CHỈ cho xóa khi video đã hoàn chỉnh: có đủ stream (video.*) + chunk (index.m3u8 + >=1 .ts).
-  // Tránh xóa nhầm khi đang upload dang dở/đang xử lý hoặc khi chưa có video.
-  const trangThai = await trangThaiUploadTheoDuongDan(duongDan);
-  if (trangThai.status !== 'completed') {
+  // Cho xóa khi đã xử lý xong ('completed') hoặc đã thất bại hẳn ('failed' - job hết
+  // lượt retry, giảng viên cần dọn để upload lại). Chặn khi đang chờ/đang chạy: worker
+  // vẫn đang ghi vào chunk/, xóa lúc này sẽ để lại rác và job kết thúc trên dữ liệu đã mất.
+  const trangThai = await trangThaiUploadTheoBaiGiang(idBaiGiang, duongDan);
+  if (trangThai.status !== 'completed' && trangThai.status !== 'failed') {
     const err = new Error(
       trangThai.status === 'processing'
-        ? 'Video đang xử lý (chưa có đủ chunk), không thể xóa'
-        : 'Bài giảng chưa có đầy đủ stream và chunk, không thể xóa'
+        ? 'Video đang xử lý, không thể xóa'
+        : 'Bài giảng chưa có video, không thể xóa'
     );
     err.status = 409;
     throw err;
@@ -681,9 +737,30 @@ async function deleteVideo(idBaiGiang, teacherKey) {
     await minioClient.removeObjects(BUCKET, objectKeysToDelete);
   }
 
-  // Cập nhật cơ sở dữ liệu để xóa liên kết video và chunk
+  // Bỏ luôn file gốc còn nằm trong spool (nếu job chưa kịp chạy/đã hỏng) để khỏi
+  // chiếm ổ đĩa worker vô ích.
+  try {
+    spool.xoaFileSpool(idBaiGiang);
+  } catch (_) {
+    /* dọn rác hụt không ảnh hưởng kết quả xóa */
+  }
+
+  // Xóa liên kết video/chunk và đưa trạng thái xử lý về vạch xuất phát để bài giảng
+  // này upload lại được.
   await BaiGiang.update(
-    { LinkBaiGiang: null, LinkChunkBaiGiang: null },
+    {
+      LinkBaiGiang: null,
+      LinkChunkBaiGiang: null,
+      TrangThaiXuLyChunk: TT.CHUA_XU_LY,
+      DanhSachChunk: null,
+      ThoiLuongGiay: null,
+      NgayBatDauXuLy: null,
+      NgayHoanThanhXuLy: null,
+      LoiXuLy: null,
+      SoLanThuLai: 0,
+      NgayThuLaiSauKhi: null,
+      MaJobXuLy: null,
+    },
     { where: { Id: idBaiGiang } }
   );
 
@@ -759,4 +836,10 @@ module.exports = {
   streamHls,
   deleteVideo,
   getMaMonCoVideo,
+  // Dùng bởi worker cắt chunk (xuLyChunk.service.js). Chỉ một chiều: service này
+  // KHÔNG require worker - đưa job vào hàng đợi chỉ là một câu UPDATE trạng thái.
+  duongDanBaiGiang,
+  uploadFile,
+  listObjectNames,
+  xoaObjectTheoPrefix,
 };

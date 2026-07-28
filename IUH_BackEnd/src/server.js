@@ -5,6 +5,7 @@ const { getPool } = require('./config/db');
 const { ensureBucket } = require('./config/minio');
 const luotXem = require('./services/luotXem.service');
 const loginGuard = require('./services/loginGuard.service');
+const xuLyChunk = require('./services/xuLyChunk.service');
 
 const result = require('dotenv').config();
 // console.log('dotenv result:', result);
@@ -31,6 +32,10 @@ async function start() {
       const donRac = () => loginGuard.donRacHetHan().catch(() => {});
       donRac();
       setInterval(donRac, 10 * 60 * 1000).unref();
+
+      // Worker cắt chunk video: poll tb_BaiGiang tìm job 'DangCho'. Tắt bằng
+      // CHUNK_WORKER_ENABLED=false nếu muốn chạy worker ở container riêng.
+      xuLyChunk.startWorkerLoop();
     });
   } catch (err) {
     console.error('Không thể khởi động server:', err.message);
@@ -38,9 +43,12 @@ async function start() {
   }
 }
 
-// Khi tắt server: ghi nốt lượt xem còn trong buffer rồi mới thoát.
+// Khi tắt server: ngừng nhận job cắt chunk mới, ghi nốt lượt xem còn trong buffer
+// rồi mới thoát. KHÔNG chờ job ffmpeg đang chạy (có thể còn vài phút) - job dở dang
+// nằm lại ở 'DangXuLy' và được quét trả về hàng đợi khi worker khởi động lại.
 for (const sig of ['SIGINT', 'SIGTERM']) {
   process.on(sig, async () => {
+    xuLyChunk.stopWorkerLoop();
     luotXem.stopFlushLoop();
     await luotXem.flush().catch(() => {});
     process.exit(0);
