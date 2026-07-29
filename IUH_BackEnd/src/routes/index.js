@@ -6,6 +6,10 @@ const router = express.Router();
 const authRoutes = require('./auth.routes');
 router.use('/auth', authRoutes);
 
+// Tài khoản đăng nhập app giảng viên (tb_login_bgdt): login + quản lý người dùng
+const nguoiDungRoutes = require('./nguoiDung.routes');
+router.use('/users', nguoiDungRoutes);
+
 // Khoá học LMS của SV
 const courseRoutes = require('./course.routes');
 router.use('/courses', courseRoutes);

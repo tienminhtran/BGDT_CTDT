@@ -1,26 +1,45 @@
 import { create } from 'zustand'
 
 /**
- * Trạng thái đăng nhập của app giảng viên.
+ * Phiên đăng nhập của app giảng viên.
  *
- * TẠM THỜI chưa xác thực thật: bấm nút "Đăng nhập" là vào, không gọi API, không
- * kiểm tài khoản/mật khẩu. Khi có API đăng nhập thì chỉ cần sửa `dangNhap` để
- * gọi API rồi lưu token — phần chặn route (RequireAuth) giữ nguyên.
+ * Đăng nhập thật qua POST /api/users/login (bảng tb_login_bgdt) -> nhận JWT.
+ * Token lưu ở sessionStorage: F5 không bị văng ra, đóng tab là hết phiên.
  *
- * Cờ lưu ở sessionStorage: F5 không bị văng ra, nhưng đóng tab là hết phiên.
+ * Cố ý dùng sessionStorage chứ không localStorage để token không sống dai trên
+ * máy dùng chung; đổi lại mở tab mới thì phải đăng nhập lại.
  */
-const KHOA = 'iuh_teacher_da_dang_nhap'
+const KHOA_TOKEN = 'iuh_teacher_token'
+const KHOA_NGUOI_DUNG = 'iuh_teacher_nguoi_dung'
+
+function docNguoiDung() {
+  try {
+    return JSON.parse(sessionStorage.getItem(KHOA_NGUOI_DUNG) || 'null')
+  } catch {
+    return null // dữ liệu hỏng -> coi như chưa đăng nhập
+  }
+}
 
 export const useAuthStore = create((set) => ({
-  daDangNhap: sessionStorage.getItem(KHOA) === '1',
+  token: sessionStorage.getItem(KHOA_TOKEN) || null,
+  nguoiDung: docNguoiDung(),
+  daDangNhap: !!sessionStorage.getItem(KHOA_TOKEN),
 
-  dangNhap: () => {
-    sessionStorage.setItem(KHOA, '1')
-    set({ daDangNhap: true })
+  // Gọi sau khi API login trả về thành công.
+  dangNhap: ({ token, nguoiDung }) => {
+    sessionStorage.setItem(KHOA_TOKEN, token)
+    sessionStorage.setItem(KHOA_NGUOI_DUNG, JSON.stringify(nguoiDung || null))
+    set({ token, nguoiDung: nguoiDung || null, daDangNhap: true })
   },
 
   dangXuat: () => {
-    sessionStorage.removeItem(KHOA)
-    set({ daDangNhap: false })
+    sessionStorage.removeItem(KHOA_TOKEN)
+    sessionStorage.removeItem(KHOA_NGUOI_DUNG)
+    set({ token: null, nguoiDung: null, daDangNhap: false })
   },
 }))
+
+// Truy cập ngoài React: axios interceptor không nằm trong component nên không dùng
+// được hook. Đọc thẳng từ store để luôn khớp lần đăng nhập mới nhất.
+export const layToken = () => useAuthStore.getState().token
+export const dangXuatNgay = () => useAuthStore.getState().dangXuat()

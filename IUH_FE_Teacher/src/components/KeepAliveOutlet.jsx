@@ -11,6 +11,7 @@ import {
   QuanLyBaiGiangDSPage,
   LichSuThayDoiPage,
   LichSuBaiGiangPage,
+  NguoiDungPage,
 } from '../pages'
 
 // Trang tương ứng mỗi tab. Router chỉ còn lo việc khớp URL, việc render trang do đây quyết định.
@@ -23,6 +24,7 @@ const TRANG_THEO_PATH = {
   [ROUTES.thumucfilebg]: QuanLyBaiGiangDSPage,
   [ROUTES.lichSuThayDoi]: LichSuThayDoiPage,
   [ROUTES.lichSuBaiGiang]: LichSuBaiGiangPage,
+  [ROUTES.nguoiDung]: NguoiDungPage,
 }
 
 /**

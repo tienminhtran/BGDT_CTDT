@@ -1,6 +1,18 @@
 // Tập trung toàn bộ đường dẫn API của backend (đặt tên tiếng Anh).
 // Endpoint động (có id) là hàm trả về chuỗi để service gọi cho gọn.
 export const ENDPOINTS = {
+  // Tài khoản đăng nhập app giảng viên (bảng tb_login_bgdt)
+  users: {
+    login: '/users/login', // POST { manhansu, matkhau } -> { token, nguoiDung }
+    me: '/users/me', // GET (Bearer) -> phiên hiện tại, dùng để kiểm token còn hạn
+    list: '/users', // GET (Bearer) -> danh sách tài khoản
+    create: '/users', // POST (Bearer) { manhansu, hoten, matkhau }
+    remove: (manhansu) => `/users/${encodeURIComponent(manhansu)}`, // DELETE
+    // PATCH { trangthai: 'HoatDong' | 'Khoa' }
+    trangThai: (manhansu) => `/users/${encodeURIComponent(manhansu)}/trang-thai`,
+    // PATCH { matkhau } -> quản trị viên cấp lại mật khẩu (không cần mật khẩu cũ)
+    matKhau: (manhansu) => `/users/${encodeURIComponent(manhansu)}/mat-khau`,
+  },
   subjects: '/subjects',
   lectures: {
     list: '/lectures', // ?course=<token>

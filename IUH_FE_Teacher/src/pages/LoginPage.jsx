@@ -1,17 +1,17 @@
 import { useState } from 'react'
 import { useLocation, useNavigate, Navigate } from 'react-router-dom'
-import { LogIn, Lock, User } from 'lucide-react'
+import { LogIn, Lock, User, Loader2 } from 'lucide-react'
 import logo from '../assets/logo-white.svg'
 import TieuDeTrang from '../components/TieuDeTrang'
 import { ROUTES } from '../constants'
+import { nguoiDungService } from '../services'
 import { useAuthStore } from '../store/authStore'
 
 /**
  * Trang đăng nhập của app giảng viên.
  *
- * TẠM THỜI chưa xác thực: bấm "Đăng nhập" là vào thẳng, không gọi API và không
- * kiểm tài khoản/mật khẩu (ô nhập chỉ để sẵn giao diện). Sau khi vào, quay lại
- * đúng trang người dùng định mở (RequireAuth gửi kèm ở state.from).
+ * Xác thực bằng mã nhân sự + mật khẩu (bảng tb_login_bgdt). Đăng nhập xong quay
+ * lại đúng trang người dùng định mở (RequireAuth gửi kèm ở state.from).
  */
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -20,14 +20,27 @@ export default function LoginPage() {
 
   const [taiKhoan, setTaiKhoan] = useState('')
   const [matKhau, setMatKhau] = useState('')
+  const [dangGui, setDangGui] = useState(false)
+  const [loi, setLoi] = useState('')
 
   // Đã đăng nhập mà vẫn vào /login -> đẩy thẳng vào trang chủ.
   if (daDangNhap) return <Navigate to={ROUTES.home} replace />
 
-  const guiForm = (e) => {
+  const guiForm = async (e) => {
     e.preventDefault()
-    dangNhap()
-    navigate(location.state?.from?.pathname || ROUTES.home, { replace: true })
+    if (dangGui) return
+
+    setLoi('')
+    setDangGui(true)
+    try {
+      const { token, nguoiDung } = await nguoiDungService.login(taiKhoan.trim(), matKhau)
+      dangNhap({ token, nguoiDung })
+      navigate(location.state?.from?.pathname || ROUTES.home, { replace: true })
+    } catch (err) {
+      // Backend đã gộp "sai tài khoản" và "sai mật khẩu" thành một thông báo.
+      setLoi(err?.response?.data?.message || 'Không đăng nhập được, thử lại sau')
+      setDangGui(false)
+    }
   }
 
   return (
@@ -53,8 +66,10 @@ export default function LoginPage() {
               <input
                 value={taiKhoan}
                 onChange={(e) => setTaiKhoan(e.target.value)}
-                placeholder="Mã giảng viên"
+                placeholder="Mã nhân sự"
                 autoComplete="username"
+                required
+                autoFocus
                 className="min-w-0 flex-1 text-sm outline-none"
               />
             </span>
@@ -70,21 +85,29 @@ export default function LoginPage() {
                 onChange={(e) => setMatKhau(e.target.value)}
                 placeholder="••••••••"
                 autoComplete="current-password"
+                required
                 className="min-w-0 flex-1 text-sm outline-none"
               />
             </span>
           </label>
 
+          {loi && (
+            <p
+              role="alert"
+              className="border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+            >
+              {loi}
+            </p>
+          )}
+
           <button
             type="submit"
-            className="flex w-full items-center justify-center gap-2 bg-[#115EA8] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-[#0d4a82]"
+            disabled={dangGui}
+            className="flex w-full items-center justify-center gap-2 bg-[#115EA8] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-[#0d4a82] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <LogIn size={16} /> Đăng nhập
+            {dangGui ? <Loader2 size={16} className="animate-spin" /> : <LogIn size={16} />}
+            {dangGui ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </button>
-
-          <p className="text-center text-xs text-slate-400">
-            Chưa nối xác thực — bấm Đăng nhập để vào hệ thống.
-          </p>
         </div>
       </form>
     </div>

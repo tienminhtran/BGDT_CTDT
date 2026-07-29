@@ -170,6 +170,31 @@ const LoginAttempt = sequelize.define(
   { tableName: 'tb_LoginAttempt' }
 );
 
+// Trạng thái tài khoản đăng nhập app giảng viên.
+// Khớp CHECK constraint CK_tb_login_bgdt_trangthai (sql/06_tao_bang_login_bgdt.sql).
+const TRANG_THAI_TAI_KHOAN = {
+  HOAT_DONG: 'HoatDong',
+  KHOA: 'Khoa',
+};
+
+// Tài khoản đăng nhập app giảng viên. matkhau là chuỗi băm bcrypt - mọi truy vấn
+// trả dữ liệu ra ngoài phải liệt kê attributes tường minh để không lộ cột này.
+const LoginBgdt = sequelize.define(
+  'LoginBgdt',
+  {
+    Manhansu: { type: DataTypes.STRING(50), primaryKey: true },
+    hoten: { type: DataTypes.STRING(255), allowNull: false },
+    matkhau: { type: DataTypes.STRING(255), allowNull: false },
+    trangthai: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      defaultValue: TRANG_THAI_TAI_KHOAN.HOAT_DONG,
+      validate: { isIn: [Object.values(TRANG_THAI_TAI_KHOAN)] },
+    },
+  },
+  { tableName: 'tb_login_bgdt' }
+);
+
 // Quan hệ:
 //   BaiGiang -> ChiTietDangKyBaiGiang -> DangKyBaiGiang -> MonhocVersion -> Monhoc
 BaiGiang.belongsTo(ChiTietDangKyBaiGiang, {
@@ -225,6 +250,8 @@ SinhVienHocPhan.hasMany(HocPhanMonHoc, {
 module.exports = {
   sequelize,
   TRANG_THAI_XU_LY_CHUNK,
+  TRANG_THAI_TAI_KHOAN,
+  LoginBgdt,
   Monhoc,
   MonhocVersion,
   DangKyBaiGiang,

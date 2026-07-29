@@ -41,6 +41,10 @@ export default function Layout({ children, onToggleMenu }) {
 function MenuTaiKhoan() {
   const navigate = useNavigate()
   const dangXuat = useAuthStore((s) => s.dangXuat)
+  // Người đang đăng nhập (tb_login_bgdt). Phiên cũ lưu trước khi có đăng nhập thật
+  // thì chưa có dữ liệu này -> lùi về nhãn chung.
+  const nguoiDung = useAuthStore((s) => s.nguoiDung)
+  const tenHienThi = nguoiDung?.hoten || 'Phòng đào tạo'
   const [mo, setMo] = useState(false)
   const boc = useRef(null)
 
@@ -78,7 +82,7 @@ function MenuTaiKhoan() {
         }`}
       >
         <UserCircle2 size={20} className="shrink-0" />
-        <span className="hidden sm:block">Phòng đào tạo</span>
+        <span className="hidden max-w-40 truncate sm:block">{tenHienThi}</span>
         <ChevronDown size={14} className={`transition-transform ${mo ? 'rotate-180' : ''}`} />
       </button>
 
@@ -88,9 +92,11 @@ function MenuTaiKhoan() {
             <UserCircle2 size={30} className="shrink-0 text-[#115EA8]" />
             <span className="min-w-0">
               <span className="block truncate text-sm font-semibold text-slate-700">
-                Phòng đào tạo
+                {tenHienThi}
               </span>
-              <span className="block truncate text-xs text-slate-400">Quản trị bài giảng</span>
+              <span className="block truncate text-xs text-slate-400">
+                {nguoiDung?.Manhansu ? `Mã NS: ${nguoiDung.Manhansu}` : 'Quản trị bài giảng'}
+              </span>
             </span>
           </div>
 
