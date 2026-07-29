@@ -209,9 +209,25 @@ exports.streamHls = async (req, res, next) => {
 
     // Đối chiếu danh tính: vé này cấp cho ai (payload.mssv) phải trùng người ĐANG đăng nhập
     // trong browser (cookie sid). Chặn dùng vé còn sót của tài khoản khác trong cùng trình duyệt.
-    const sid = readSid(req);
-    if (!sid || sid !== payload.mssv) {
-      return res.status(401).json({ message: 'Phiên không khớp, vui lòng đăng nhập lại' });
+    // NÀY dễ lỗi  HLS loc networkError/manifesticacError (HTTP 401)
+    // const sid = readSid(req);
+    // if (!sid || sid !== payload.mssv) {
+    //   return res.status(401).json({ message: 'Phiên không khớp, vui lòng đăng nhập lại' });
+    // }
+    // Luồng giảng viên đã được chặn bằng x-teacher-key ở endpoint cấp vé.
+    // Với app desktop, request HLS đi qua WebView2 + proxy có thể không giữ cookie sid ổn định
+    // giữa các lần mở video, nên cho phép bypass kiểm tra sid khi key giảng viên hợp lệ.
+    const teacherKey = req.headers['x-teacher-key'];
+    const isTeacher =
+      !!process.env.KEY_LOGIN_TEACHER && teacherKey === process.env.KEY_LOGIN_TEACHER;
+
+    if (!isTeacher) {
+      // Đối chiếu danh tính: vé này cấp cho ai (payload.mssv) phải trùng người ĐANG đăng nhập
+      // trong browser (cookie sid). Chặn dùng vé còn sót của tài khoản khác trong cùng trình duyệt.
+      const sid = readSid(req);
+      if (!sid || sid !== payload.mssv) {
+        return res.status(401).json({ message: 'Phiên không khớp, vui lòng đăng nhập lại' });
+      }
     }
 
     await baiGiang.streamHls(id, req.params.file, res);
