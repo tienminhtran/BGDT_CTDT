@@ -421,17 +421,17 @@ export default function CoursePlayerPage() {
         <TieuDeTrang tieuDe="Không có quyền truy cập" />
         <main className="mx-auto w-full max-w-full px-4 py-6">
           {BackButton}
-          <div className="mx-auto mt-10 max-w-md rounded-xl border border-amber-200 bg-amber-50 p-6 text-center">
+          <div className="mx-auto mt-10 max-w-md rounded-xl border border-neutral-200  p-6 text-center">
             <img
               src={prohibitedSvg}
               alt="Không có quyền truy cập"
               className="mx-auto h-40 w-auto"
             />
-            <h1 className="mt-3 font-semibold text-amber-800">
+            {/* <h1 className="mt-3 font-semibold text-amber-800">
               Bạn không có quyền học môn này
-            </h1>
-            <p className="mt-1 text-sm text-amber-700">
-              Khóa học này không thuộc học phần nào bạn đang theo học.
+            </h1> */}
+            <p className="mt-1 text-sm text-red-700">
+              Nếu bạn có đăng ký học phần vui lòng liên hệ Phòng Đào tạo.
             </p>
           </div>
         </main>
