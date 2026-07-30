@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { GraduationCap, ExternalLink, BookOpen, FileVideoCamera } from 'lucide-react'
+import { ExternalLink, FileVideoCamera } from 'lucide-react'
 import { courseService, baiGiangService } from '../services'
 import { STORAGE_KEYS, buildLmsCourseUrl } from '../constants'
+import EmptyState from '../assets/Empty_state.svg'
 
 function ProgressBar({ value }) {
   const pct = Math.round(value ?? 0)
@@ -86,7 +87,17 @@ export default function CourseList() {
   }
 
   if (!state.courses.length) {
-    return <p className="mt-8 text-slate-500">Bạn chưa tham gia môn học nào.</p>
+    return (
+      <div className="mt-10 flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-10 text-center shadow-sm">
+        <img
+          src={EmptyState}
+          alt="Không có môn học"
+          className="h-56 w-full max-w-md object-contain"
+        />
+        <p className="mt-4 text-base font-medium text-slate-700">Bạn chưa tham gia môn học nào.</p>
+        <p className="mt-1 text-sm text-slate-500">Khi có môn học, danh sách sẽ hiển thị ở đây.</p>
+      </div>
+    )
   }
 
   return (
