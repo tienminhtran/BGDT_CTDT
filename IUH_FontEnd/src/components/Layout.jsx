@@ -168,6 +168,20 @@ export default function Layout({ user, onLogout, children }) {
                     Đổi mật khẩu
                   </button>
 
+                  {/*Hướng dẫn sử dụng */}
+                  <button
+                    type="button"
+                    onClick={() => (window.location.href = "/huong-dan")}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-blue-900 hover:bg-gray-50 cursor-pointer"
+                  >
+                    {/* Ổ khoá nền trắng, nét đen — đè lên nét thư mục cho rõ ruột icon */}
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M2 20V4C2 3.44772 2.44772 3 3 3H8.44792C8.79153 3 9.11108 3.17641 9.29416 3.46719L10.5947 5.53281C10.7778 5.82359 11.0974 6 11.441 6H21C21.5523 6 22 6.44772 22 7V20C22 20.5523 21.5523 21 21 21H3C2.44772 21 2 20.5523 2 20Z" stroke="#200E32" strokeWidth={1.4} />
+                      <rect x="8.75" y="12.5" width="6.5" height="5" rx="0.8" fill="#fff" stroke="#200E32" strokeWidth={1.2} />
+                    </svg>
+                    Hướng dẫn
+                  </button>
+
                   {/* đăng xuất */}
                   <button
                     type="button"
