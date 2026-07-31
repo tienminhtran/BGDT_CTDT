@@ -45,7 +45,7 @@ export default function LoginModal({ onLogin, onClose }) {
             aria-label="Đóng"
             className="rounded p-1 text-white/80 hover:bg-white/20 hover:text-white"
           >
-            ✕
+            <SquareXIcon className="h-4 w-4" />
           </button>
         </div>
 
