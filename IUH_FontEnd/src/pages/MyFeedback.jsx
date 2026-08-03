@@ -391,7 +391,7 @@ export default function MyFeedback() {
             </button>
             <button
               type="submit"
-              className="inline-flex flex-1 items-center justify-center gap-1 bg-[#153898] px-3 py-2 text-sm font-medium text-white hover:bg-[#0032ba]"
+              className="inline-flex flex-1 items-center justify-center gap-1 bg-[#153898] px-3 py-2 text-sm font-medium text-white hover:bg-[#0032ba] "
             >
               <Search size={14} />
               Tìm kiếm

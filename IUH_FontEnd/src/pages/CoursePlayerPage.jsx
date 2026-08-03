@@ -317,6 +317,21 @@ export default function CoursePlayerPage() {
   // Lấy danh sách video theo token mờ
   useEffect(() => {
     let alive = true
+
+    // Chỉ tải danh sách sau khi kiểm tra quyền xong và được phép truy cập.
+    if (access.loading) {
+      return () => {
+        alive = false
+      }
+    }
+    if (!access.allowed) {
+      setVideos({ loading: false, items: [], subjectName: null, version: null, error: '' })
+      setActiveId(null)
+      return () => {
+        alive = false
+      }
+    }
+
     setVideos({ loading: true, items: [], subjectName: null, version: null, error: '' })
     baiGiangService
       .getDanhSachVideo(token)
@@ -338,7 +353,7 @@ export default function CoursePlayerPage() {
     return () => {
       alive = false
     }
-  }, [token])
+  }, [token, access.loading, access.allowed])
 
   // Khi có ?bg=<baiGiangId> (điều hướng từ trang đánh giá) và danh sách đã tải:
   // mở đúng bài giảng đó nếu nó nằm trong danh sách.
@@ -359,6 +374,7 @@ export default function CoursePlayerPage() {
     let alive = true
     setPlaySrc(null)
     setPlayError(false)
+    if (!access.allowed) return
     if (!active?.baiGiangId || !active?.coHls) return
     baiGiangService
       .getPlaybackToken(active.baiGiangId)
@@ -367,7 +383,7 @@ export default function CoursePlayerPage() {
     return () => {
       alive = false
     }
-  }, [active?.baiGiangId, active?.coHls])
+  }, [access.allowed, active?.baiGiangId, active?.coHls])
 
   // Đếm lượt xem: ở lại bài giảng >= 3s mới gửi 1 beacon (mỗi bài giảng chỉ tính 1 lần/phiên).
   // sendBeacon nhẹ, không chặn UI, không cần chờ response.

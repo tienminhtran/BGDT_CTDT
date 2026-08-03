@@ -233,7 +233,7 @@ export default function ManualPage() {
           <Link
             to={user ? ROUTES.dashboard : ROUTES.home}
             aria-label={user ? 'Vào khóa học' : 'Đăng nhập'}
-            className="inline-flex items-center gap-2 bg-blue-700 px-8 py-4 text-sm font-semibold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-800"
+            className="relative inline-flex items-center gap-1 overflow-hidden bg-blue-700 px-2 py-2 text-sm font-semibold text-white shadow-lg transition before:absolute before:inset-0 before:-translate-x-full before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent before:transition-transform before:duration-700 hover:before:translate-x-full"
           >
             <LogIn size={20} />
             {user ? 'Truy cập khóa học' : 'Bắt đầu đăng nhập ngay'}

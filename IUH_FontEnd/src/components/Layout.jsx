@@ -75,7 +75,7 @@ export default function Layout({ user, onLogout, children }) {
                 </button>
 
               {open && (
-                <div className="absolute right-0 z-20 mt-1 w-40 bg-white py-1 shadow-lg rounded-b-md ">
+                <div className="absolute right-0 z-20 mt-1 w-45 bg-white py-1 shadow-lg rounded-b-md ">
 
 
                 {/* danh sách đánh giá */}
@@ -119,15 +119,6 @@ export default function Layout({ user, onLogout, children }) {
 
                   Trang chủ
                 </button>
-
-
-
-
-
-
-
-
-
 
 
                   {/* danh sách đánh giá  */}
