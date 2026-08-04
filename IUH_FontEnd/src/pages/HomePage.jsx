@@ -132,7 +132,8 @@ export default function HomePage() {
 
         <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center gap-10 px-6 py-16 lg:flex-row lg:justify-between lg:gap-8">
           {/* Hướng dẫn sử dụng - hiện sau Login trên mobile, hiện trước (trái) trên desktop */}
-          <div className="order-2 w-full max-w-md rounded-xl border border-white/30 bg-[#8CB8C4]/80 p-7 shadow-xl backdrop-blur-md lg:order-1">          <h1 className="text-center text-2xl font-bold text-white drop-shadow sm:text-3xl">
+          <div className="order-2 w-full max-w-md rounded-xl border border-white/30 bg-[#8CB8C4]/80 p-7 shadow-xl backdrop-blur-md lg:order-1">          
+          <h1 className="text-center text-2xl font-bold text-[#ffffff] drop-shadow sm:text-3xl">
                Hệ thống Bài giảng điện tử
             </h1>
             <p className="mt-1 text-center text-lg font-bold text-blue-900 drop-shadow sm:text-xl">
@@ -144,7 +145,7 @@ export default function HomePage() {
                 <span className="font-semibold">1.</span>
                 <span>
                   Sinh viên, giảng viên đăng nhập bằng tài khoản{' '}
-                  <span className="font-medium text-blue-200">LMS</span> do nhà
+                  <span className="font-medium text-[#ff5100]">LMS</span> do nhà
                   trường cấp. Không sử dụng tài khoản của hệ thống khác để đăng
                   nhập.
                 </span>
@@ -159,7 +160,7 @@ export default function HomePage() {
                       role="tooltip"
                       className="pointer-events-none absolute left-0 top-full z-50 mt-1.5 w-[min(17rem,80vw)] rounded-md bg-gray-900 px-3 py-2 text-[13px] font-normal leading-relaxed text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100"
                     >
-                      <span className="block">Điện thoại: 0283.8940 390 — máy lẻ 838</span>
+                      <span className="block">ĐT: 0283.8940 390 - 838</span>
                       <span className="block">Email: csm@iuh.edu.vn</span>
                       <span className="absolute -top-1 left-4 h-2 w-2 rotate-45 bg-gray-900" />
                     </span>
@@ -199,10 +200,11 @@ export default function HomePage() {
 
             <Link
               to={ROUTES.huongDan}
-              className="mt-6 inline-flex w-full items-center justify-center gap-2 bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:bg-blue-300"
+              className="relative inline-flex items-center gap-1 overflow-hidden bg-blue-700 w-full justify-center px-2 py-2 text-sm font-semibold text-white shadow-lg transition before:absolute before:inset-0 before:-translate-x-full before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent before:transition-transform before:duration-700 hover:before:translate-x-full"
+              // className="mt-6 inline-flex w-full items-center justify-center gap-2 bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:bg-blue-300"
             >
               <BookOpen size={16} />
-              Xem hướng dẫn sử dụng chi tiết
+              Xem hướng dẫn sử dụng hệ thống
             </Link>
           </div>
 
@@ -261,11 +263,25 @@ function LoginForm({ login }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (khoaConLai > 0) return
+
+    const trimmedUsername = username.trim()
+    const trimmedPassword = password.trim()
+
+    if (!trimmedUsername) {
+      setError('Vui lòng nhập mã số sinh viên')
+      return
+    }
+
+    if (!trimmedPassword) {
+      setError('Vui lòng nhập mật khẩu')
+      return
+    }
+
     setLoading(true)
     setError('')
 
     try {
-      await login(username, password, captcha ? { captchaToken: captcha.captchaToken, captchaText } : undefined)
+      await login(trimmedUsername, trimmedPassword, captcha ? { captchaToken: captcha.captchaToken, captchaText } : undefined)
     } catch (err) {
       const status = err?.response?.status
       const data = err?.response?.data || {}
@@ -335,8 +351,14 @@ function LoginForm({ login }) {
               type="text"
               placeholder="Nhập MSSV"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => {
+                setError('')
+                setUsername(e.target.value)
+              }}
               onBlur={kiemTraTrangThai}
+              required
+              autoComplete="username"
+              aria-required="true"
               className="w-full rounded-sm border border-gray-300 px-4 py-3 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
             />
           </div>
@@ -350,7 +372,13 @@ function LoginForm({ login }) {
               type="password"
               placeholder="Nhập mật khẩu"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setError('')
+                setPassword(e.target.value)
+              }}
+              required
+              autoComplete="current-password"
+              aria-required="true"
               className="w-full rounded-sm border border-gray-300 px-4 py-3 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
             />
           </div>
@@ -401,7 +429,7 @@ function LoginForm({ login }) {
 
           <button
             type="submit"
-            disabled={loading || khoaConLai > 0}
+            disabled={loading || khoaConLai > 0 || !username.trim() || !password.trim()}
             className="w-full rounded-sm bg-blue-700 py-3 text-lg font-semibold text-white transition hover:bg-blue-800 disabled:bg-blue-300"
           >
             {khoaConLai > 0

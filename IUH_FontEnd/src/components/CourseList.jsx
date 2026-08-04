@@ -20,6 +20,17 @@ function ProgressBar({ value }) {
   )
 }
 
+function decodeHtmlEntities(text = '') {
+  if (!text) return ''
+  const textarea = document.createElement('textarea')
+  textarea.innerHTML = text
+  return textarea.value
+}
+
+function removeTrailingParenSuffix(text = '') {
+  return decodeHtmlEntities(text).replace(/\s*\([^()]*\)\s*$/, '').trim()
+}
+
 export default function CourseList() {
   const navigate = useNavigate()
   const [state, setState] = useState({ loading: true, courses: [], error: '' })
@@ -102,8 +113,8 @@ export default function CourseList() {
 
   return (
     <div className="mt-8">
-      <h2 className="mb-4 text-xl font-bold text-[#115EA8]">
-        Môn học của bạn ({state.courses.length})
+      <h2 className="mb-4 text-xl font-bold text-[#FAB72A]">
+        Môn học của bạn: {state.courses.length} môn 👋
       </h2>
 
       {/* Ô nhập đường dẫn vào học: gõ "mã môn/phiên bản" (vd 2101420/1) rồi Enter */}
@@ -202,8 +213,9 @@ export default function CourseList() {
             key={c.id}
             className="flex h-full flex-col border border-slate-200 bg-white p-5 shadow-sm transition hover:border-[#153898] hover:shadow-md"
           >
-            <h3 className="line-clamp-2 min-h-[3rem] font-semibold text-slate-800">
-              {c.fullname}
+            {/* DO LÚC nào cũng Công nghệ phần mềm(420300111104), viết hàm xử lý loại bỏ lùi 1 cặp ngoặc cuối */}
+            <h3 className="line-clamp-2 min-h-[3rem] font-semibold text-[#153898]">
+              {removeTrailingParenSuffix(c.fullname)}
             </h3>
             <p className="mt-1 text-xs text-slate-400">{c.idnumber}</p>
             <ProgressBar value={c.progress} />

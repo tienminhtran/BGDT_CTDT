@@ -9,10 +9,24 @@ export default function LoginModal({ onLogin, onClose }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const trimmedUsername = username.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedUsername) {
+      setError('Vui lòng nhập mã số sinh viên');
+      return;
+    }
+
+    if (!trimmedPassword) {
+      setError('Vui lòng nhập mật khẩu');
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
-      await onLogin(username, password);
+      await onLogin(trimmedUsername, trimmedPassword);
     } catch (err) {
       setError(
         err?.response?.data?.message || 'Sai tài khoản hoặc mật khẩu LMS'
@@ -65,23 +79,35 @@ export default function LoginModal({ onLogin, onClose }) {
             type="text"
             placeholder="MSSV / Tài khoản"
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={(e) => {
+              setError('');
+              setUsername(e.target.value);
+            }}
             autoFocus
-            className=" border border-gray-300 px-3 py-2.5 text-[0.95rem] outline-none focus:border-blue-900"
+            required
+            autoComplete="username"
+            aria-required="true"
+            className="border border-gray-300 px-3 py-2.5 text-[0.95rem] outline-none focus:border-blue-900"
           />
           <input
             type="password"
             placeholder="Mật khẩu"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className=" border border-gray-300 px-3 py-2.5 text-[0.95rem] outline-none focus:border-blue-900"
+            onChange={(e) => {
+              setError('');
+              setPassword(e.target.value);
+            }}
+            required
+            autoComplete="current-password"
+            aria-required="true"
+            className="border border-gray-300 px-3 py-2.5 text-[0.95rem] outline-none focus:border-blue-900"
           />
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <button
             type="submit"
-            disabled={loading || !username || !password}
+            disabled={loading || !username.trim() || !password.trim()}
             className="mt-1 flex min-h-[46px] items-center justify-center bg-blue-900 py-1.5 text-base text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300"
           >
             {loading ? (

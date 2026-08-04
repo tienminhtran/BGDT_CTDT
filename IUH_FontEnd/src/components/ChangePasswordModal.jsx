@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { Eye, EyeOff, X, CheckCircle2, RefreshCw, AlertTriangle } from 'lucide-react'
 import { authService, lmsService } from '../services'
 
-// Ô nhập mật khẩu kèm nút hiện/ẩn — dùng lại cho cả 3 ô cho đồng nhất.
 function OMatKhau({ label, value, onChange, placeholder, autoFocus }) {
   const [hien, setHien] = useState(false)
 
