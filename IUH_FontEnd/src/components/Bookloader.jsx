@@ -1,159 +1,105 @@
-import React from 'react';
+import React from "react";
+import logo from "../assets/logo_1.svg";
 
-const COLOR = '#224397';
-const DURATION = '6.8s';
-const PAGE_COUNT = 18;
-
-// The original SCSS used a @while loop to generate 18 near-identical
-// keyframes (page-1..page-18), each offset by a small delay. We do the
-// same thing here with a plain JS loop instead of a SCSS compiler.
-function buildPageKeyframes() {
-  let css = '';
-  for (let i = 1; i <= PAGE_COUNT; i++) {
-    const delay = i * 1.86;
-    const delayAfter = i * 1.74;
-    css += `
-      @keyframes page-${i} {
-        ${4 + delay}% { transform: rotateZ(0deg) translateX(-18px); }
-        ${13 + delayAfter}%, ${54 + delay}% { transform: rotateZ(180deg) translateX(-18px); }
-        ${63 + delayAfter}% { transform: rotateZ(0deg) translateX(-18px); }
-      }
-    `;
-  }
-  return css;
-}
-
-const STATIC_CSS = `
-  .book {
-    --color: ${COLOR};
-    --duration: ${DURATION};
-    width: 32px;
-    height: 12px;
-    position: relative;
-    margin: 32px 0 0 0;
-    background: none;
-  }
-  .book .inner {
-    width: 32px;
-    height: 12px;
-    position: relative;
-    transform-origin: 2px 2px;
-    transform: rotateZ(-90deg);
-    animation: book var(--duration) ease infinite;
-  }
-  .book .inner .left,
-  .book .inner .right {
-    width: 60px;
-    height: 4px;
-    top: 0;
-    border-radius: 2px;
-    background: var(--color);
-    position: absolute;
-  }
-  .book .inner .left::before,
-  .book .inner .right::before {
-    content: '';
-    width: 48px;
-    height: 4px;
-    border-radius: 2px;
-    background: inherit;
-    position: absolute;
-    top: -10px;
-    left: 6px;
-  }
-  .book .inner .left {
-    right: 28px;
-    transform-origin: 58px 2px;
-    transform: rotateZ(90deg);
-    animation: left var(--duration) ease infinite;
-  }
-  .book .inner .right {
-    left: 28px;
-    transform-origin: 2px 2px;
-    transform: rotateZ(-90deg);
-    animation: right var(--duration) ease infinite;
-  }
-  .book .inner .middle {
-    width: 32px;
-    height: 12px;
-    border: 4px solid var(--color);
-    border-top: 0;
-    border-radius: 0 0 9px 9px;
-    transform: translateY(2px);
-  }
-  .book ul {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    position: absolute;
-    left: 50%;
-    top: 0;
-  }
-  .book ul li {
-    height: 4px;
-    border-radius: 2px;
-    transform-origin: 100% 2px;
-    width: 48px;
-    right: 0;
-    top: -10px;
-    position: absolute;
-    background: var(--color);
-    transform: rotateZ(0deg) translateX(-18px);
-    animation-duration: var(--duration);
-    animation-timing-function: ease;
-    animation-iteration-count: infinite;
-  }
-
-  @keyframes left {
-    4% { transform: rotateZ(90deg); }
-    10%, 40% { transform: rotateZ(0deg); }
-    46%, 54% { transform: rotateZ(90deg); }
-    60%, 90% { transform: rotateZ(0deg); }
-    96% { transform: rotateZ(90deg); }
-  }
-  @keyframes right {
-    4% { transform: rotateZ(-90deg); }
-    10%, 40% { transform: rotateZ(0deg); }
-    46%, 54% { transform: rotateZ(-90deg); }
-    60%, 90% { transform: rotateZ(0deg); }
-    96% { transform: rotateZ(-90deg); }
-  }
-  @keyframes book {
-    4% { transform: rotateZ(-90deg); }
-    10%, 40% { transform: rotateZ(0deg); transform-origin: 2px 2px; }
-    40.01%, 59.99% { transform-origin: 30px 2px; }
-    46%, 54% { transform: rotateZ(90deg); }
-    60%, 90% { transform: rotateZ(0deg); transform-origin: 2px 2px; }
-    96% { transform: rotateZ(-90deg); }
-  }
-`;
-
-// size: hệ số phóng to/thu nhỏ (1 = kích thước gốc, 0.5 = một nửa...)
-export default function BookLoader({ color = COLOR, size = 1 }) {
-  const pages = Array.from({ length: PAGE_COUNT }, (_, idx) => idx + 1);
+export default function BookLoader({
+  size = 1,
+  colorOuter = "#2b72c4",
+  colorInner = "#4a1575",
+}) {
+  const px = 80 * size;
 
   return (
     <>
-      <style>{STATIC_CSS + buildPageKeyframes()}</style>
+      <style>{`
+        .book-loader{
+          position:relative;
+          display:inline-flex;
+          align-items:center;
+          justify-content:center;
+        }
+
+        .book-loader svg{
+          width:100%;
+          height:100%;
+        }
+
+        .book-loader-logo{
+          position:absolute;
+          width:38%;
+          height:38%;
+          object-fit:contain;
+          z-index:10;
+          user-select:none;
+          pointer-events:none;
+        }
+
+        .outer-ring{
+          animation:spinClockwise 2s linear infinite;
+          transform-origin:center;
+        }
+
+        .inner-ring{
+          animation:spinCounterClockwise 1.5s linear infinite;
+          transform-origin:center;
+        }
+
+        @keyframes spinClockwise{
+          from{
+            transform:rotate(0deg);
+          }
+          to{
+            transform:rotate(360deg);
+          }
+        }
+
+        @keyframes spinCounterClockwise{
+          from{
+            transform:rotate(0deg);
+          }
+          to{
+            transform:rotate(-360deg);
+          }
+        }
+      `}</style>
+
       <div
-        className="book"
+        className="book-loader"
         style={{
-          '--color': color,
-          // Các "trang" fan ra phía trên khiến loader lệch lên; dịch xuống ~6px để nằm giữa
-          transform: `scale(${size}) translateY(6px)`,
-          transformOrigin: 'center',
+          width: px,
+          height: px,
         }}
       >
-        <div className="inner">
-          <div className="left" />
-          <div className="middle" />
-          <div className="right" />
-        </div>
-        <ul>
-          {pages.map((n) => (
-            <li key={n} style={{ animationName: `page-${n}` }} />
-          ))}
-        </ul>
+        <svg viewBox="0 0 100 100">
+          {/* Vòng ngoài */}
+          <g className="outer-ring">
+            <path
+              d="M20 50 A30 30 0 0 1 80 50"
+              fill="none"
+              stroke={colorOuter}
+              strokeWidth="7"
+              strokeLinecap="round"
+            />
+          </g>
+
+          {/* Vòng trong */}
+          <g className="inner-ring">
+            <path
+              d="M50 28 A22 22 0 0 1 50 72"
+              fill="none"
+              stroke={colorInner}
+              strokeWidth="7"
+              strokeLinecap="round"
+            />
+          </g>
+        </svg>
+
+        {/* Logo giữa */}
+        <img
+          src={logo}
+          alt="Logo"
+          className="book-loader-logo size-logo"
+          draggable={false}
+        />
       </div>
     </>
   );

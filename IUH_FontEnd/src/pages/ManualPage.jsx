@@ -15,13 +15,13 @@ import {
 import { useAuth } from '../contexts/AuthContext'
 import { ROUTES } from '../constants'
 import LogoIllustration from '../components/Logoillustration'
+import ManualFooter from '../components/ManualFooter'
 import TieuDeTrang from '../components/TieuDeTrang'
-import logo from '../assets/logo-white.svg'
 import logoWhite from '../assets/logo-white.svg'
-import buoc1 from '../assets/Buoc_1.png'
-import buoc2 from '../assets/Buoc_2.png'
-import buoc3 from '../assets/Buoc_3.png'
-import buoc4 from '../assets/Buoc_4.png'
+import buoc1 from '../assets/buoc_1_hdsd_converted.avif'
+import buoc2 from '../assets/buoc_2_hdsd_converted.avif'
+import buoc3 from '../assets/buoc_3_hdsd_converted.avif'
+import buoc4 from '../assets/buoc_4_hdsd_converted.avif'
 
 /* ---------- Dữ liệu 4 bước hướng dẫn ---------- */
 const STEPS = [
@@ -61,19 +61,11 @@ export default function ManualPage() {
   // Trang này tĩnh (không gọi API) nên loading ở đây là GIẢ LẬP: hiện màn chờ
   // LogoIllustration một nhịp cho hiệu ứng reveal chạy xong rồi mới lộ nội dung.
   const [dangTai, setDangTai] = useState(true)
-  const [heroGlow, setHeroGlow] = useState({ x: '50%', y: '35%' })
 
   useEffect(() => {
     const t = setTimeout(() => setDangTai(false), 2200)
     return () => clearTimeout(t)
   }, [])
-
-  const handleHeroMove = (event) => {
-    const rect = event.currentTarget.getBoundingClientRect()
-    const x = ((event.clientX - rect.left) / rect.width) * 100
-    const y = ((event.clientY - rect.top) / rect.height) * 100
-    setHeroGlow({ x: `${x}%`, y: `${y}%` })
-  }
 
   if (dangTai) {
     return (
@@ -112,58 +104,39 @@ export default function ManualPage() {
 
       {/* ===== Hero ===== */}
       <section
-        className="relative overflow-hidden bg-gradient-to-br from-blue-800 via-blue-700 to-blue-500 text-white"
-        onMouseMove={handleHeroMove}
-        onMouseLeave={() => setHeroGlow({ x: '50%', y: '35%' })}
-        style={{
-          '--hero-x': heroGlow.x,
-          '--hero-y': heroGlow.y,
-        }}
+        className="relative overflow-hidden bg-[#153898] text-white"
       >
-        <div
-          className="pointer-events-none absolute inset-0 opacity-70"
-          aria-hidden="true"
-          style={{
-            backgroundImage:
-              'radial-gradient(circle 160px at var(--hero-x) var(--hero-y), rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.08) 35%, transparent 72%)',
-          }}
-        />
-        <div
-          className="pointer-events-none absolute -right-24 -top-24 h-96 w-96  bg-white/10 blur-3xl"
-          aria-hidden="true"
-        />
-        <div
-          className="pointer-events-none absolute -bottom-32 -left-24 h-96 w-96 bg-cyan-300/10 blur-3xl"
-          aria-hidden="true"
-        />
-        <div className="relative mx-auto max-w-6xl px-6 py-16 text-center sm:py-20">
-          <span className="inline-flex items-center gap-2  bg-white/15 px-4 py-1.5 text-sm font-medium backdrop-blur">
-            <GraduationCap size={16} />
-            Hệ thống Bài giảng điện tử 
-          </span>
-          <h1 className="mt-6 text-3xl font-bold drop-shadow sm:text-5xl">
-            Hướng dẫn sử dụng
-          </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-base text-blue-100 sm:text-lg">
-            Chỉ với 4 bước đơn giản, sinh viên có thể đăng nhập, xem, đánh giá và
-            lưu trữ lại các bài giảng điện tử của mình.
-          </p>
+        <div className="relative mx-auto flex max-w-6xl items-center justify-center px-6 py-16 sm:py-20">
+          <div className="relative z-10 max-w-full text-center">
+            <span className="inline-flex items-center gap-2 bg-white/10 px-4 py-1.5 text-sm font-medium">
+              <GraduationCap size={16} />
+              Hệ thống Bài giảng điện tử
+            </span>
+            <h1 className="mt-6 text-3xl font-bold drop-shadow sm:text-5xl">
+              Hướng dẫn sử dụng
+            </h1>
+            <p className="mx-auto mt-4 max-w-2xl text-base text-blue-100 sm:text-lg">
+              Quy trình 4 bước tối ưu giúp sinh viên dễ dàng truy cập, theo dõi, đánh giá và quản lý kho bài giảng điện tử cá nhân.
+            </p>
 
-          {/* Chip 4 bước tóm tắt */}
-          <div className="mx-auto mt-8 flex max-w-xl flex-wrap items-center justify-center gap-2 text-sm">
-            {STEPS.map((s, i) => (
-              <span key={s.title} className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1.5 backdrop-blur">
-                  <span className="grid h-5 w-5 place-items-center rounded-full bg-white text-xs font-bold text-blue-700">
-                    {i + 1}
-                  </span>
-                  {s.title}
-                </span>
-                {i < STEPS.length - 1 && (
-                  <ChevronRight size={14} className="hidden text-white/50 sm:block" />
-                )}
-              </span>
-            ))}
+            {/* Chip 4 bước tóm tắt */}
+            <div className="mx-auto mt-8 flex w-full max-w-6xl flex-wrap items-center justify-center gap-x-2 gap-y-3 md:flex-nowrap md:overflow-x-auto md:px-1 sm:gap-x-3">
+              {STEPS.map((s, i) => (
+                <div key={s.title} className="flex shrink-0 items-center">
+                  <div className="flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-2 text-center shadow-[0_10px_25px_rgba(6,18,78,0.18)] backdrop-blur-sm sm:px-4">
+                    <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-[11px] font-bold text-blue-700 sm:h-7 sm:w-7 sm:text-xs">
+                      {i + 1}
+                    </span>
+                    <span className="whitespace-nowrap text-sm font-medium text-white/95 sm:text-base">
+                      {s.title}
+                    </span>
+                  </div>
+                  {i < STEPS.length - 1 && (
+                    <ChevronRight size={16} className="mx-1 shrink-0 text-white/60 sm:mx-2" />
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -241,124 +214,7 @@ export default function ManualPage() {
         </div>
       </section>
 
-      {/* ===== Footer / Thông tin liên hệ ===== */}
-      <footer className="relative overflow-hidden bg-blue-800 text-white">
-        <div
-          className="absolute inset-0 bg-cover bg-center md:hidden"
-          style={{ backgroundImage: 'url(https://iuh.edu.vn/assets/images/bg-footermb.jpg)' }}
-          aria-hidden="true"
-        />
-        <div
-          className="absolute inset-0 hidden bg-cover bg-center md:block"
-          style={{ backgroundImage: 'url(https://iuh.edu.vn/assets/images/bg-footer.jpg)' }}
-          aria-hidden="true"
-        />
-        <div className="pointer-events-none absolute inset-0 bg-blue-900/35" aria-hidden="true" />
-        <div className="pointer-events-none absolute -left-24 top-10 h-80 w-80 rounded-full bg-cyan-400/10 blur-3xl" aria-hidden="true" />
-        <div className="pointer-events-none absolute -right-20 bottom-0 h-80 w-80 rounded-full bg-white/10 blur-3xl" aria-hidden="true" />
-
-        <div className="relative mx-auto flex w-full max-w-[1200px] flex-col-reverse px-4 pb-5 pt-8 lg:flex-col lg:pb-4 lg:pt-10">
-          <div className="mb-6 grid grid-cols-1 gap-y-6 md:gap-6 lg:grid-cols-3 lg:gap-x-0 lg:gap-6">
-            <div className="group relative overflow-hidden bg-transparent p-1 text-white shadow-none transition duration-300 hover:translate-y-0">
-              <div className="flex flex-col gap-3">
-                <div className="flex justify-start">
-                  <img
-                    src={logo}
-                    alt="IUH"
-                    className="h-12 w-auto shrink-0 object-contain md:h-14"
-                  />
-                </div>
-                <img
-                  src={logo}
-                  alt="IUH"
-                  className="hidden h-12 w-auto shrink-0 object-contain md:h-14"
-                />
-                <div className="flex items-start gap-3">
-                  <span className="mt-1 text-cyan-100">
-                    <MapPin size={18} />
-                  </span>
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-bold tracking-wide text-white/95">
-                      Địa chỉ
-                    </h3>
-                    <p className="mt-2 text-sm leading-relaxed text-white/85">
-                      Số 12 Nguyễn Văn Bảo, P. Hạnh Thông, TP. Hồ Chí Minh
-                    </p>
-                    <p className="mt-2 inline-block text-sm font-medium text-cyan-100">
-                      Phòng Đào tạo - Tầng trệt - Nhà B
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="group relative overflow-hidden bg-transparent p-1 text-white shadow-none transition duration-300 hover:translate-y-0">
-              <div className="flex items-start gap-3">
-                <span className="mt-1 text-cyan-100">
-                  <Phone size={18} />
-                </span>
-                <div className="min-w-0">
-                  <h3 className="text-sm font-bold tracking-wide text-white/95">
-                    Điện thoại
-                  </h3>
-                  <ul className="mt-2 space-y-2 text-sm text-white/85">
-                    <li className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2">
-                      <span className="text-white/70">Phòng Đào tạo</span>
-                      <a href="tel:02838940390" className="font-semibold text-white hover:underline">
-                        0283.8940390 - 525
-                      </a>
-                    </li>
-                    <li className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2">
-                      <span className="text-white/70">Tuyển sinh</span>
-                      <a href="tel:02839851932" className="font-semibold text-white hover:underline">
-                        028 3985 1932
-                      </a>
-                    </li>
-                    <li className="flex flex-wrap items-center justify-end gap-3">
-                      <a href="tel:02838955858" className="font-semibold text-white hover:underline">
-                        028 3895 5858
-                      </a>
-                      <a href="tel:02839851917" className="font-semibold text-white hover:underline">
-                        028 3985 1917
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            <div className="group relative overflow-hidden bg-transparent p-1 text-white shadow-none transition duration-300 hover:translate-y-0">
-              <div className="flex items-start gap-3">
-                <span className="mt-1 text-cyan-100">
-                  <Mail size={18} />
-                </span>
-                <div className="min-w-0">
-                  <h3 className="text-sm font-bold tracking-wide text-white/95">Email</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-white/85">
-                    Gửi email cho chúng tôi, phản hồi trong giờ hành chính.
-                  </p>
-                  <a
-                    href="mailto:phongdaotao@iuh.edu.vn"
-                    className="mt-4 inline-flex items-center gap-2 bg-white/10 px-3 py-2 text-xs font-semibold text-white backdrop-blur transition hover:bg-white/15"
-                  >
-                    <Mail size={14} />
-                    phongdaotao@iuh.edu.vn
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="w-full border-t border-white/15 pt-6">
-            <div className="flex flex-col flex-wrap gap-2 lg:flex-row">
-              <div className="flex flex-row flex-wrap justify-center gap-2 md:justify-start md:gap-4 shrink-0" />
-              <div className="w-full flex-1 text-center text-base font-normal leading-6 lg:text-right">
-                © 2026 Phòng Đào Tạo - Bản quyền nội dung thuộc về IUH.
-              </div>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <ManualFooter />
     </div>
   )
 }

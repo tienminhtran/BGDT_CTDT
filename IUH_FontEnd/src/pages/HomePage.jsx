@@ -5,9 +5,9 @@ import { useAuth } from '../contexts/AuthContext'
 import TieuDeTrang from '../components/TieuDeTrang'
 import { authService } from '../services'
 import { ROUTES } from '../constants'
-import bgImage from '../assets/bg.jpg'
+import bgImage from '../assets/bg.webp'
 import logo from '../assets/logo.svg'
-import img_bg_login from '../assets/img_bg_login.svg'
+import img_bg_login from '../assets/abc.svg'
 
 /* ---------- Số đếm động khi cuộn tới ---------- */
 function CountUp({ end, suffix = '', duration = 1500 }) {
@@ -47,54 +47,7 @@ function CountUp({ end, suffix = '', duration = 1500 }) {
   )
 }
 
-/* ---------- Dữ liệu Khoa/Viện ---------- */
-const FACULTIES = [
-  {
-    icon: '💻',
-    name: 'Công nghệ Thông tin',
-    subjects: ['Công nghệ phần mềm', 'Lập trình Java', 'Cơ sở dữ liệu', 'Trí tuệ nhân tạo'],
-  },
-  {
-    icon: '⚡',
-    name: 'Điện - Điện tử',
-    subjects: ['Mạch điện tử', 'Vi xử lý', 'Hệ thống nhúng', 'Điều khiển tự động'],
-  },
-  {
-    icon: '⚙️',
-    name: 'Cơ khí',
-    subjects: ['Sức bền vật liệu', 'CAD/CAM', 'Kỹ thuật chế tạo máy', 'Cơ học kỹ thuật'],
-  },
-  {
-    icon: '📊',
-    name: 'Quản trị Kinh doanh',
-    subjects: ['Quản trị học', 'Marketing căn bản', 'Quản trị tài chính', 'Khởi nghiệp'],
-  },
-  {
-    icon: '🌐',
-    name: 'Ngoại ngữ',
-    subjects: ['Tiếng Anh giao tiếp', 'Biên - Phiên dịch', 'Anh văn chuyên ngành', 'TOEIC'],
-  },
-  {
-    icon: '🧪',
-    name: 'Công nghệ Hóa học',
-    subjects: ['Hóa đại cương', 'Hóa hữu cơ', 'Kỹ thuật phản ứng', 'Hóa phân tích'],
-  },
-]
 
-const FAQS = [
-  {
-    q: 'Quên mật khẩu tài khoản trường thì làm sao?',
-    a: 'Liên hệ Phòng Đào tạo hoặc Trung tâm CNTT để được cấp lại mật khẩu tài khoản định danh của trường.',
-  },
-  {
-    q: 'Lỗi không vào được bài giảng video?',
-    a: 'Kiểm tra kết nối mạng, thử trình duyệt Chrome bản mới nhất, xóa cache. Nếu vẫn lỗi, liên hệ hotline kỹ thuật bên dưới.',
-  },
-  {
-    q: 'Tôi là tân sinh viên, dùng tài khoản nào để đăng nhập?',
-    a: 'Dùng đúng tài khoản (MSSV + mật khẩu) do nhà trường cấp khi nhập học.',
-  },
-]
 
 export default function HomePage() {
   const { login } = useAuth()
@@ -103,8 +56,6 @@ export default function HomePage() {
 
   const heroBg = {
     backgroundImage: `url(${bgImage})`,
-    // Màu nền dự phòng lúc bg.jpg chưa tải xong (khi reload). Dùng tông sáng gần với
-    // ảnh để không bị "nháy" xanh đậm; trước đây là #1e3a8a nên reload thấy nền xanh.
     backgroundColor: '#eef2f9',
     backgroundSize: 'cover',
     backgroundPosition: 'center',
@@ -304,7 +255,7 @@ function LoginForm({ login }) {
     <div className="relative mx-auto w-full max-w-lg overflow-hidden rounded-xl bg-white shadow-2xl">
 
       {/* Banner */}
-      <div className="relative h-44 bg-gradient-to-r from-blue-500 to-blue-400">
+      <div className="relative h-44 bg-gradient-to-r from-blue-500 to-blue-600">
         <img
           src={img_bg_login}
           alt=""
@@ -322,18 +273,18 @@ function LoginForm({ login }) {
             Đăng nhập hệ thống
           </h2>
 
-          <p className="mt-1 text-sm text-blue-100">
+          {/* <p className="mt-1 text-sm text-blue-100">
           
             Sử dụng tài khoản{' '}
             <a
               href="https://lms.iuh.edu.vn"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium text-blue-600 hover:underline"
+              className="font-medium text-[#ff5100] hover:underline"
             >
               LMS của Trường
             </a>
-          </p>
+          </p> */}
         </div>
       </div>
 
@@ -349,7 +300,7 @@ function LoginForm({ login }) {
 
             <input
               type="text"
-              placeholder="Nhập MSSV"
+              placeholder="Mã số sinh viên"
               value={username}
               onChange={(e) => {
                 setError('')
@@ -370,7 +321,7 @@ function LoginForm({ login }) {
 
             <input
               type="password"
-              placeholder="Nhập mật khẩu"
+              placeholder="Mật khẩu LMS"
               value={password}
               onChange={(e) => {
                 setError('')
