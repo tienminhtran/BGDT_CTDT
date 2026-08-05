@@ -18,10 +18,10 @@ import LogoIllustration from '../components/Logoillustration'
 import ManualFooter from '../components/ManualFooter'
 import TieuDeTrang from '../components/TieuDeTrang'
 import logoWhite from '../assets/logo-white.svg'
-import buoc1 from '../assets/buoc_1_hdsd.webp'
-import buoc2 from '../assets/buoc_2_hdsd.webp'
-import buoc3 from '../assets/buoc_3_hdsd.webp'
-import buoc4 from '../assets/buoc_4_hdsd.webp'
+import buoc1 from '../assets/buoc_1_hdsd.jpg'
+import buoc2 from '../assets/buoc_2_hdsd.jpg'
+import buoc3 from '../assets/buoc_3_hdsd.jpg'
+import buoc4 from '../assets/buoc_4_hdsd.jpg'
 
 /* ---------- Dữ liệu 4 bước hướng dẫn ---------- */
 const STEPS = [

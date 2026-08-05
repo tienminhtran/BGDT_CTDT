@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import TieuDeTrang from '../components/TieuDeTrang'
 import { authService } from '../services'
 import { ROUTES } from '../constants'
-import bgImage from '../assets/bg.webp'
+import bgImage from '../assets/bg.jpg'
 import logo from '../assets/logo.svg'
 import img_bg_login from '../assets/abc.svg'
 
