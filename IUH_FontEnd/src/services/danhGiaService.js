@@ -4,13 +4,17 @@ import { ENDPOINTS } from '../constants'
 // Thống kê đánh giá tổng hợp của bài giảng (công khai).
 // Trả về { total, average, distribution } — KHÔNG có đánh giá của từng SV.
 export const getDanhGia = async (lectureId) => {
-  const { data } = await http.get(ENDPOINTS.reviews.byLecture(lectureId))
+  const { data } = await http.get(ENDPOINTS.reviews.byLecture(lectureId), {
+    showErrorPage: true,
+  })
   return data
 }
 
 // Đánh giá của chính SV cho bài giảng (null nếu chưa có). Cần đăng nhập.
 export const getDanhGiaCuaToi = async (lectureId) => {
-  const { data } = await http.get(ENDPOINTS.reviews.mine(lectureId))
+  const { data } = await http.get(ENDPOINTS.reviews.mine(lectureId), {
+    showErrorPage: true,
+  })
   return data.review
 }
 
@@ -26,7 +30,10 @@ export const getDanhGiaCuaSinhVienList = async (filters = {}, pagination = {}) =
   }
   if (pagination.page) params.page = pagination.page
   if (pagination.pageSize) params.pageSize = pagination.pageSize
-  const { data } = await http.get(ENDPOINTS.reviews.my(), { params })
+  const { data } = await http.get(ENDPOINTS.reviews.my(), {
+    params,
+    showErrorPage: true,
+  })
   return data
 }
 

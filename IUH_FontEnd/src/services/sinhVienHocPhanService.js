@@ -8,6 +8,7 @@ export const importHocPhan = () => http.post(ENDPOINTS.studentCourses.import)
 export const kiemTraQuyen = async (courseToken) => {
   const { data } = await http.get(ENDPOINTS.studentCourses.access, {
     params: { course: courseToken },
+    showErrorPage: true,
   })
   return !!data.allowed
 }

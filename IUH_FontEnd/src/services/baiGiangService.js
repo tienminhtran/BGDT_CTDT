@@ -3,7 +3,11 @@ import { ENDPOINTS } from '../constants'
 
 // Sinh token mờ cho 1 khóa học (mã môn + phiên bản) để điều hướng không lộ mã môn.
 export const createCourseToken = async (courseCode, version) => {
-  const { data } = await http.post(ENDPOINTS.lectures.token, { courseCode, version })
+  const { data } = await http.post(ENDPOINTS.lectures.token, {
+    courseCode,
+    version,
+    showErrorPage: true,
+  })
   return data.token
 }
 
@@ -11,12 +15,15 @@ export const createCourseToken = async (courseCode, version) => {
 export const getDanhSachVideo = async (courseToken) => {
   const { data } = await http.get(ENDPOINTS.lectures.list, {
     params: { course: courseToken },
+    showErrorPage: true,
   })
   return { subjectName: data.subjectName, version: data.version, videos: data.videos || [] }
 }
 
 // Lấy URL phát HLS (kèm token) qua proxy backend cho bucket private.
 export const getPlaybackToken = async (lectureId) => {
-  const { data } = await http.get(ENDPOINTS.lectures.playbackToken(lectureId))
+  const { data } = await http.get(ENDPOINTS.lectures.playbackToken(lectureId), {
+    showErrorPage: true,
+  })
   return data.url
 }

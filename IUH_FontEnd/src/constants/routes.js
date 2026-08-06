@@ -8,6 +8,8 @@ export const ROUTES = {
   danhGia: '/danh-gia',
   // Trang hướng dẫn công khai (xem được khi chưa đăng nhập)
   huongDan: '/huong-dan',
+  // Trang lỗi HTTP do server trả về (403/404/500...)
+  httpError: '/loi',
 }
 
 // Tạo đường dẫn vào học từ token mờ (lấy qua API /lectures/token).

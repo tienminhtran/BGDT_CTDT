@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { API_BASE_URL, STORAGE_KEYS } from '../constants'
+import { ROUTES } from '../constants'
 import { startRequest, endRequest } from './loadingStore'
 
 // Axios instance dùng chung cho toàn app.
@@ -33,6 +34,37 @@ const settle = (config) => {
   }
 }
 
+const HTTP_ERROR_STATUSES = new Set([403, 404, 500])
+
+const redirectToHttpErrorPage = (error) => {
+  const status = error?.response?.status
+  const config = error?.config || {}
+
+  if (!HTTP_ERROR_STATUSES.has(status)) return
+  if (!config.showErrorPage) return
+  if (typeof window === 'undefined') return
+  if (window.location.pathname === ROUTES.httpError) return
+
+  const params = new URLSearchParams()
+  params.set('status', String(status))
+
+  const message =
+    error?.response?.data?.message ||
+    (status === 403
+      ? 'Máy chủ đã từ chối yêu cầu này.'
+      : status === 404
+        ? 'Không tìm thấy dữ liệu trên máy chủ.'
+        : 'Máy chủ đang gặp sự cố. Vui lòng thử lại sau.')
+
+  params.set('message', message)
+
+  if (config.url) {
+    params.set('source', String(config.url))
+  }
+
+  window.location.replace(`${ROUTES.httpError}?${params.toString()}`)
+}
+
 http.interceptors.response.use(
   (response) => {
     settle(response.config)
@@ -40,6 +72,7 @@ http.interceptors.response.use(
   },
   (error) => {
     settle(error.config)
+    redirectToHttpErrorPage(error)
     return Promise.reject(error)
   }
 )
